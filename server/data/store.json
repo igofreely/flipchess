@@ -1,4 +1,6987 @@
 {
-  "users": [],
-  "matches": []
+  "users": [
+    {
+      "id": "c141f435-ee50-4549-9202-79caaf550b00",
+      "username": "u1771504971",
+      "passwordHash": "$2b$10$FpWiAFfyrwumzCDE.ttiMu1KQQByThzrZuWUNssGajO2rXmKDOTdm",
+      "createdAt": "2026-02-19T12:42:51.737Z"
+    },
+    {
+      "id": "9312d82a-0ebc-42a1-9cf6-d70eb328e0e5",
+      "username": "u1771504981",
+      "passwordHash": "$2b$10$0nrDd7IYdOCIgr71JnDtFufaOlIszr9u9noHqjdZANhcufI/oaumS",
+      "createdAt": "2026-02-19T12:43:01.597Z"
+    },
+    {
+      "id": "a70521d7-7227-48ec-a783-f990e20ec7b1",
+      "username": "u1771504988",
+      "passwordHash": "$2b$10$40o7.4Fqts5CPOrueROwQeGiZ2SM.iwR9y70C/sNj4DmtxfymOHhu",
+      "createdAt": "2026-02-19T12:43:08.883Z"
+    },
+    {
+      "id": "56384587-0f09-44d0-aa15-3e73fde184e0",
+      "username": "igofreely",
+      "passwordHash": "$2b$10$rWcWcmrTXCjltcRfck4C3ucZ24sMHPkePFRElNADGDoyKg5ahUH1S",
+      "createdAt": "2026-02-19T12:44:24.021Z"
+    },
+    {
+      "id": "f502f25a-1487-4039-a804-ad96eb70b9b3",
+      "username": "hookapp",
+      "passwordHash": "$2b$10$QmQgoA9NKl.L9u8BJV1WIePEKeGknfWHm.pHLSTbjc5y8xzcwoabe",
+      "createdAt": "2026-02-19T12:46:16.419Z"
+    },
+    {
+      "id": "0f1a1a20-d177-436b-b3f6-e7ad6d6b97bb",
+      "username": "hookapp1",
+      "passwordHash": "$2b$10$bN1yogcpJnfdTN607IDunezAJEjjhVX4g.MUhMk.mCMEMSuAPE/pS",
+      "createdAt": "2026-02-19T12:48:33.324Z"
+    },
+    {
+      "id": "b8bf07c1-5d60-48d2-93f0-abc750eeeeb2",
+      "username": "123",
+      "passwordHash": "$2b$10$znBCGDScxafqq8G4Ru87yeAuCc4aMbbp0nccirH1aNeMAYg9W7VSi",
+      "createdAt": "2026-02-19T15:37:12.095Z"
+    },
+    {
+      "id": "961de89c-1d17-4afd-9356-c564e0110e2d",
+      "username": "321",
+      "passwordHash": "$2b$10$Z2LQdqidOutwbopvtKT0ZOx.buzlz7bHpNa0tVwb29bexyWjI5AWi",
+      "createdAt": "2026-02-19T15:48:05.645Z"
+    },
+    {
+      "id": "eeef0c47-2a8d-46a1-928b-7aa784ad5cca",
+      "username": "111",
+      "passwordHash": "$2b$10$uz.H7s5dkHzVslz1shjMQ.hmc.Ny1UztgXyHb3zJeOlqCaA./zhcK",
+      "createdAt": "2026-02-19T15:48:19.834Z"
+    },
+    {
+      "id": "540dba56-89d8-41fd-ae6b-fb83dd41a14d",
+      "username": "222",
+      "passwordHash": "$2b$10$VcTFo2qj4XIZfORWxVP3G.pGHu2mCv2RflDiWSzKFnA2MEKIYxXgy",
+      "createdAt": "2026-02-19T15:48:31.370Z"
+    },
+    {
+      "id": "a73c994d-19ab-46c5-a040-13438cee0139",
+      "username": "333",
+      "passwordHash": "$2b$10$Us5GgBoA43z0IEoLNgNRb.623g9OOpiLoc12N7ki9Sm/6M0NRXASm",
+      "createdAt": "2026-02-19T15:49:38.935Z"
+    }
+  ],
+  "matches": [
+    {
+      "id": "3c6f8d98-f537-49da-8aac-4fd9f0420fe9",
+      "mode": "vs_ai",
+      "status": "ongoing",
+      "createdAt": "2026-02-19T12:42:51.985Z",
+      "updatedAt": "2026-02-19T12:42:51.985Z",
+      "createdByUserId": "c141f435-ee50-4549-9202-79caaf550b00",
+      "red": {
+        "type": "user",
+        "userId": "c141f435-ee50-4549-9202-79caaf550b00",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 5000
+      },
+      "black": {
+        "type": "ai",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 5000
+      },
+      "initialState": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            "black-3",
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-6",
+            "black-7"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            "black-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            "black-12",
+            null,
+            "black-13",
+            null,
+            "black-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            "red-11",
+            null,
+            "red-12",
+            null,
+            "red-13",
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            "red-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-9",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-king",
+            "red-4",
+            "red-5",
+            "red-6",
+            "red-7"
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": true
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 3
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 8
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": null,
+        "isDraw": false,
+        "quietMoveCount": 0,
+        "moveCount": 0,
+        "message": "轮到红方",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7"
+        ],
+        "checkHistory": []
+      },
+      "state": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            "black-3",
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-6",
+            "black-7"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            "black-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            "black-12",
+            null,
+            "black-13",
+            null,
+            "black-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            "red-11",
+            null,
+            "red-12",
+            null,
+            "red-13",
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            "red-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-9",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-king",
+            "red-4",
+            "red-5",
+            "red-6",
+            "red-7"
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": true
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 3
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 8
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": null,
+        "isDraw": false,
+        "quietMoveCount": 0,
+        "moveCount": 0,
+        "message": "轮到红方",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7"
+        ],
+        "checkHistory": []
+      },
+      "drawOfferBySide": {
+        "red": false,
+        "black": false
+      },
+      "undoRequest": null,
+      "result": null,
+      "termination": null,
+      "moves": []
+    },
+    {
+      "id": "ae091af9-ab75-42b4-92f6-0086853c1333",
+      "mode": "vs_ai",
+      "status": "ongoing",
+      "createdAt": "2026-02-19T12:43:01.663Z",
+      "updatedAt": "2026-02-19T12:43:01.663Z",
+      "createdByUserId": "9312d82a-0ebc-42a1-9cf6-d70eb328e0e5",
+      "red": {
+        "type": "user",
+        "userId": "9312d82a-0ebc-42a1-9cf6-d70eb328e0e5",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 5000
+      },
+      "black": {
+        "type": "ai",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 5000
+      },
+      "initialState": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            "black-3",
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-6",
+            "black-7"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            "black-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            "black-12",
+            null,
+            "black-13",
+            null,
+            "black-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            "red-11",
+            null,
+            "red-12",
+            null,
+            "red-13",
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            "red-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-9",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-king",
+            "red-4",
+            "red-5",
+            "red-6",
+            "red-7"
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": true
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 3
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 8
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": null,
+        "isDraw": false,
+        "quietMoveCount": 0,
+        "moveCount": 0,
+        "message": "轮到红方",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7"
+        ],
+        "checkHistory": []
+      },
+      "state": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            "black-3",
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-6",
+            "black-7"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            "black-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            "black-12",
+            null,
+            "black-13",
+            null,
+            "black-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            "red-11",
+            null,
+            "red-12",
+            null,
+            "red-13",
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            "red-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-9",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-king",
+            "red-4",
+            "red-5",
+            "red-6",
+            "red-7"
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": true
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 3
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 8
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": null,
+        "isDraw": false,
+        "quietMoveCount": 0,
+        "moveCount": 0,
+        "message": "轮到红方",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7"
+        ],
+        "checkHistory": []
+      },
+      "drawOfferBySide": {
+        "red": false,
+        "black": false
+      },
+      "undoRequest": null,
+      "result": null,
+      "termination": null,
+      "moves": []
+    },
+    {
+      "id": "cd845cf1-4db5-4b23-9a0e-daaf6879cc22",
+      "mode": "pvp",
+      "status": "finished",
+      "createdAt": "2026-02-19T15:46:09.136Z",
+      "updatedAt": "2026-02-19T15:46:20.299Z",
+      "createdByUserId": "56384587-0f09-44d0-aa15-3e73fde184e0",
+      "red": {
+        "type": "user",
+        "userId": "56384587-0f09-44d0-aa15-3e73fde184e0",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 2000
+      },
+      "black": {
+        "type": "user",
+        "userId": "f502f25a-1487-4039-a804-ad96eb70b9b3",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 2000
+      },
+      "initialState": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            "black-3",
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-6",
+            "black-7"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            "black-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            "black-12",
+            null,
+            "black-13",
+            null,
+            "black-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            "red-11",
+            null,
+            "red-12",
+            null,
+            "red-13",
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            "red-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-9",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-king",
+            "red-4",
+            "red-5",
+            "red-6",
+            "red-7"
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": true
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 3
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 8
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": null,
+        "isDraw": false,
+        "quietMoveCount": 0,
+        "moveCount": 0,
+        "message": "轮到红方",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7"
+        ],
+        "checkHistory": []
+      },
+      "state": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            "black-3",
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-6",
+            "black-7"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            "black-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            "black-12",
+            null,
+            "black-13",
+            null,
+            "black-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            "red-11",
+            null,
+            "red-12",
+            null,
+            "red-13",
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            "red-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-9",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-king",
+            "red-4",
+            "red-5",
+            "red-6",
+            "red-7"
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": true
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 3
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 8
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": "red",
+        "isDraw": false,
+        "quietMoveCount": 0,
+        "moveCount": 0,
+        "message": "黑方认输，红方获胜",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7"
+        ],
+        "checkHistory": []
+      },
+      "drawOfferBySide": {
+        "red": false,
+        "black": false
+      },
+      "undoRequest": null,
+      "result": "red",
+      "termination": "黑方认输，红方获胜",
+      "moves": []
+    },
+    {
+      "id": "a3210d6c-506a-464a-9e38-56a86feebe0b",
+      "mode": "vs_ai",
+      "status": "ongoing",
+      "createdAt": "2026-02-19T15:57:16.142Z",
+      "updatedAt": "2026-02-19T16:11:50.084Z",
+      "createdByUserId": "56384587-0f09-44d0-aa15-3e73fde184e0",
+      "red": {
+        "type": "user",
+        "userId": "56384587-0f09-44d0-aa15-3e73fde184e0",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 2000
+      },
+      "black": {
+        "type": "ai",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 2000
+      },
+      "initialState": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            "black-3",
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-6",
+            "black-7"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            "black-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            "black-12",
+            null,
+            "black-13",
+            null,
+            "black-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            "red-11",
+            null,
+            "red-12",
+            null,
+            "red-13",
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            "red-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-9",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-king",
+            "red-4",
+            "red-5",
+            "red-6",
+            "red-7"
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": true
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 3
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 8
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": null,
+        "isDraw": false,
+        "quietMoveCount": 0,
+        "moveCount": 0,
+        "message": "轮到红方",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7"
+        ],
+        "checkHistory": []
+      },
+      "state": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            null,
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-7",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-13",
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            "black-12",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            "black-3",
+            null,
+            "red-12",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            "red-king",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "black-8",
+            "red-2",
+            "black-14",
+            null,
+            "red-4",
+            null,
+            "red-6",
+            null
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 8,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": false
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": false
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": false
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": false
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "cannon",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 1
+            },
+            "alive": false
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "cannon",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": false
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "pawn",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 5,
+              "col": 2
+            },
+            "alive": false
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 5,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "advisor",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 5,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": false
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "cannon",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": false
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": null,
+        "isDraw": false,
+        "quietMoveCount": 0,
+        "moveCount": 18,
+        "message": "轮到红方",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "black|black-0,black-1,black-2,black-3,black-king,black-4,black-5,red-9,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "black|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,red-13,.,./red-10,.,red-11,.,red-12,.,.,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,.,.,black-14/.,.,.,.,.,.,red-13,.,./red-10,.,red-11,.,red-12,.,.,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "black|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,.,.,black-14/.,.,.,.,red-12,.,red-13,.,./red-10,.,red-11,.,.,.,.,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,.,.,black-14/.,.,.,.,red-12,.,red-13,.,./red-10,.,red-11,.,.,.,.,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,black-8,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "black|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,.,.,black-14/.,.,red-11,.,red-12,.,red-13,.,./red-10,.,.,.,.,.,.,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,black-8,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,.,.,./.,.,red-11,.,red-12,.,red-13,.,./red-10,.,.,.,.,.,.,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,black-8,red-2,red-3,red-king,red-4,red-5,red-6,black-14",
+          "black|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,red-8,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,.,.,./.,.,red-11,.,red-12,.,red-13,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,black-8,red-2,red-3,red-king,red-4,red-5,red-6,black-14",
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,red-8,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,.,.,./.,.,red-11,.,red-12,.,red-13,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,black-8,red-2,red-3,red-king,red-4,black-14,red-6,.",
+          "black|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,red-8,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,.,.,./.,.,red-11,.,red-12,.,red-13,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,red-king,.,.,.,./red-0,black-8,red-2,red-3,.,red-4,black-14,red-6,.",
+          "red|black-0,black-1,black-2,.,black-king,black-4,black-5,black-7,./.,.,black-3,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,red-8,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,.,.,./.,.,red-11,.,red-12,.,red-13,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,red-king,.,.,.,./red-0,black-8,red-2,red-3,.,red-4,black-14,red-6,.",
+          "black|black-0,black-1,black-2,.,black-king,black-4,black-5,black-7,./.,.,black-3,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,red-8,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,red-13,.,./.,.,red-11,.,red-12,.,.,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,red-king,.,.,.,./red-0,black-8,red-2,red-3,.,red-4,black-14,red-6,.",
+          "red|black-0,black-1,black-2,.,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,black-3,black-11,.,black-12,.,black-13,.,./.,.,.,.,.,.,red-13,.,./.,.,red-11,.,red-12,.,.,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,red-king,.,.,.,./red-0,black-8,red-2,red-3,.,red-4,black-14,red-6,.",
+          "black|black-0,black-1,black-2,.,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,black-3,black-11,.,black-12,.,red-13,.,./.,.,.,.,.,.,.,.,./.,.,red-11,.,red-12,.,.,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,red-king,.,.,.,./red-0,black-8,red-2,red-3,.,red-4,black-14,red-6,.",
+          "red|black-0,black-1,black-2,.,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,red-13,.,./.,.,.,.,.,.,.,.,./.,.,black-3,.,red-12,.,.,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,red-king,.,.,.,./red-0,black-8,red-2,red-3,.,red-4,black-14,red-6,.",
+          "black|black-0,black-1,black-2,.,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,red-13,black-9,./black-10,.,black-11,.,black-12,.,.,.,./.,.,.,.,.,.,.,.,./.,.,black-3,.,red-12,.,.,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,red-king,.,.,.,./red-0,black-8,red-2,red-3,.,red-4,black-14,red-6,.",
+          "red|black-0,black-1,black-2,.,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,.,.,.,.,.,red-13,black-9,./black-10,.,black-11,.,black-12,.,.,.,./.,.,.,.,.,.,.,.,./.,.,black-3,.,red-12,.,.,.,./red-10,.,.,.,.,.,.,.,red-14/.,.,.,.,.,.,.,.,./.,.,.,.,red-king,.,.,.,./red-0,black-8,red-2,black-14,.,red-4,.,red-6,."
+        ],
+        "checkHistory": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "black",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "drawOfferBySide": {
+        "red": false,
+        "black": false
+      },
+      "undoRequest": null,
+      "result": null,
+      "termination": null,
+      "moves": [
+        {
+          "ply": 1,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 7,
+            "col": 7
+          },
+          "to": {
+            "row": 0,
+            "col": 7
+          },
+          "pieceText": "车",
+          "createdAt": "2026-02-19T15:57:38.917Z"
+        },
+        {
+          "ply": 2,
+          "side": "black",
+          "actor": "ai",
+          "from": {
+            "row": 0,
+            "col": 8
+          },
+          "to": {
+            "row": 0,
+            "col": 7
+          },
+          "pieceText": "卒",
+          "createdAt": "2026-02-19T15:57:41.928Z"
+        },
+        {
+          "ply": 3,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 6,
+            "col": 6
+          },
+          "to": {
+            "row": 5,
+            "col": 6
+          },
+          "pieceText": "兵",
+          "createdAt": "2026-02-19T15:57:45.820Z"
+        },
+        {
+          "ply": 4,
+          "side": "black",
+          "actor": "ai",
+          "from": {
+            "row": 3,
+            "col": 8
+          },
+          "to": {
+            "row": 4,
+            "col": 8
+          },
+          "pieceText": "炮",
+          "createdAt": "2026-02-19T15:57:48.827Z"
+        },
+        {
+          "ply": 5,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 6,
+            "col": 4
+          },
+          "to": {
+            "row": 5,
+            "col": 4
+          },
+          "pieceText": "兵",
+          "createdAt": "2026-02-19T15:57:52.360Z"
+        },
+        {
+          "ply": 6,
+          "side": "black",
+          "actor": "ai",
+          "from": {
+            "row": 2,
+            "col": 1
+          },
+          "to": {
+            "row": 9,
+            "col": 1
+          },
+          "pieceText": "士",
+          "createdAt": "2026-02-19T15:57:55.365Z"
+        },
+        {
+          "ply": 7,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 6,
+            "col": 2
+          },
+          "to": {
+            "row": 5,
+            "col": 2
+          },
+          "pieceText": "象",
+          "createdAt": "2026-02-19T15:58:04.637Z"
+        },
+        {
+          "ply": 8,
+          "side": "black",
+          "actor": "ai",
+          "from": {
+            "row": 4,
+            "col": 8
+          },
+          "to": {
+            "row": 9,
+            "col": 8
+          },
+          "pieceText": "炮",
+          "createdAt": "2026-02-19T15:58:07.644Z"
+        },
+        {
+          "ply": 9,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 7,
+            "col": 1
+          },
+          "to": {
+            "row": 3,
+            "col": 1
+          },
+          "pieceText": "车",
+          "createdAt": "2026-02-19T15:58:13.783Z"
+        },
+        {
+          "ply": 10,
+          "side": "black",
+          "actor": "ai",
+          "from": {
+            "row": 9,
+            "col": 8
+          },
+          "to": {
+            "row": 9,
+            "col": 6
+          },
+          "pieceText": "炮",
+          "createdAt": "2026-02-19T15:58:16.790Z"
+        },
+        {
+          "ply": 11,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 9,
+            "col": 4
+          },
+          "to": {
+            "row": 8,
+            "col": 4
+          },
+          "pieceText": "将",
+          "createdAt": "2026-02-19T15:58:22.100Z"
+        },
+        {
+          "ply": 12,
+          "side": "black",
+          "actor": "ai",
+          "from": {
+            "row": 0,
+            "col": 3
+          },
+          "to": {
+            "row": 1,
+            "col": 2
+          },
+          "pieceText": "马",
+          "createdAt": "2026-02-19T15:58:25.106Z"
+        },
+        {
+          "ply": 13,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 5,
+            "col": 6
+          },
+          "to": {
+            "row": 4,
+            "col": 6
+          },
+          "pieceText": "兵",
+          "createdAt": "2026-02-19T16:10:21.278Z"
+        },
+        {
+          "ply": 14,
+          "side": "black",
+          "actor": "ai",
+          "from": {
+            "row": 1,
+            "col": 2
+          },
+          "to": {
+            "row": 3,
+            "col": 1
+          },
+          "pieceText": "马",
+          "createdAt": "2026-02-19T16:10:24.285Z"
+        },
+        {
+          "ply": 15,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 4,
+            "col": 6
+          },
+          "to": {
+            "row": 3,
+            "col": 6
+          },
+          "pieceText": "兵",
+          "createdAt": "2026-02-19T16:11:38.967Z"
+        },
+        {
+          "ply": 16,
+          "side": "black",
+          "actor": "ai",
+          "from": {
+            "row": 3,
+            "col": 1
+          },
+          "to": {
+            "row": 5,
+            "col": 2
+          },
+          "pieceText": "马",
+          "createdAt": "2026-02-19T16:11:41.971Z"
+        },
+        {
+          "ply": 17,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 3,
+            "col": 6
+          },
+          "to": {
+            "row": 2,
+            "col": 6
+          },
+          "pieceText": "兵",
+          "createdAt": "2026-02-19T16:11:47.079Z"
+        },
+        {
+          "ply": 18,
+          "side": "black",
+          "actor": "ai",
+          "from": {
+            "row": 9,
+            "col": 6
+          },
+          "to": {
+            "row": 9,
+            "col": 3
+          },
+          "pieceText": "炮",
+          "createdAt": "2026-02-19T16:11:50.084Z"
+        }
+      ]
+    },
+    {
+      "id": "2865a382-7dce-4501-be64-c5fa1fbd6e8f",
+      "mode": "pvp",
+      "status": "ongoing",
+      "createdAt": "2026-02-19T16:13:40.984Z",
+      "updatedAt": "2026-02-19T16:15:02.633Z",
+      "createdByUserId": "56384587-0f09-44d0-aa15-3e73fde184e0",
+      "red": {
+        "type": "user",
+        "userId": "56384587-0f09-44d0-aa15-3e73fde184e0",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 2000
+      },
+      "black": {
+        "type": "user",
+        "userId": "f502f25a-1487-4039-a804-ad96eb70b9b3",
+        "aiDepth": 5,
+        "aiTimeBudgetMs": 2000
+      },
+      "initialState": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            "black-3",
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-6",
+            "black-7"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            "black-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            "black-12",
+            null,
+            "black-13",
+            null,
+            "black-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            "red-11",
+            null,
+            "red-12",
+            null,
+            "red-13",
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            "red-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "red-9",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-king",
+            "red-4",
+            "red-5",
+            "red-6",
+            "red-7"
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": true
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 3
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 8
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": null,
+        "isDraw": false,
+        "quietMoveCount": 0,
+        "moveCount": 0,
+        "message": "轮到红方",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7"
+        ],
+        "checkHistory": []
+      },
+      "state": {
+        "board": [
+          [
+            "black-0",
+            "black-1",
+            "black-2",
+            "black-3",
+            "black-king",
+            "black-4",
+            "black-5",
+            "black-7",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            "black-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "black-9",
+            null
+          ],
+          [
+            "black-10",
+            null,
+            "black-11",
+            null,
+            null,
+            null,
+            "black-13",
+            null,
+            "black-14"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            "black-12",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            "red-12",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-10",
+            null,
+            "red-11",
+            null,
+            null,
+            null,
+            "red-13",
+            null,
+            "red-14"
+          ],
+          [
+            null,
+            "red-8",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "red-0",
+            "red-1",
+            "red-2",
+            "red-3",
+            "red-king",
+            "red-4",
+            "red-5",
+            "red-6",
+            "red-7"
+          ]
+        ],
+        "pieces": {
+          "red-king": {
+            "id": "red-king",
+            "side": "red",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 9,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-king": {
+            "id": "black-king",
+            "side": "black",
+            "realType": "king",
+            "bornType": "king",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-0": {
+            "id": "red-0",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-1": {
+            "id": "red-1",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-2": {
+            "id": "red-2",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-3": {
+            "id": "red-3",
+            "side": "red",
+            "realType": "rook",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 3
+            },
+            "alive": true
+          },
+          "red-4": {
+            "id": "red-4",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 5
+            },
+            "alive": true
+          },
+          "red-5": {
+            "id": "red-5",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-6": {
+            "id": "red-6",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 7
+            },
+            "alive": true
+          },
+          "red-7": {
+            "id": "red-7",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 9,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 9,
+              "col": 8
+            },
+            "alive": true
+          },
+          "red-8": {
+            "id": "red-8",
+            "side": "red",
+            "realType": "cannon",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 7,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 7,
+              "col": 1
+            },
+            "alive": true
+          },
+          "red-9": {
+            "id": "red-9",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "cannon",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 7,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": false
+          },
+          "red-10": {
+            "id": "red-10",
+            "side": "red",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 0
+            },
+            "alive": true
+          },
+          "red-11": {
+            "id": "red-11",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 2
+            },
+            "alive": true
+          },
+          "red-12": {
+            "id": "red-12",
+            "side": "red",
+            "realType": "elephant",
+            "bornType": "pawn",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 6,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 5,
+              "col": 4
+            },
+            "alive": true
+          },
+          "red-13": {
+            "id": "red-13",
+            "side": "red",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 6
+            },
+            "alive": true
+          },
+          "red-14": {
+            "id": "red-14",
+            "side": "red",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 6,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 6,
+              "col": 8
+            },
+            "alive": true
+          },
+          "black-0": {
+            "id": "black-0",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "rook",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-1": {
+            "id": "black-1",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-2": {
+            "id": "black-2",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-3": {
+            "id": "black-3",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 3
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 3
+            },
+            "alive": true
+          },
+          "black-4": {
+            "id": "black-4",
+            "side": "black",
+            "realType": "rook",
+            "bornType": "advisor",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 5
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 5
+            },
+            "alive": true
+          },
+          "black-5": {
+            "id": "black-5",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "elephant",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-6": {
+            "id": "black-6",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "horse",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 0,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": false
+          },
+          "black-7": {
+            "id": "black-7",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "rook",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 0,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 0,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-8": {
+            "id": "black-8",
+            "side": "black",
+            "realType": "elephant",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 1
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 1
+            },
+            "alive": true
+          },
+          "black-9": {
+            "id": "black-9",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "cannon",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 2,
+              "col": 7
+            },
+            "currentPos": {
+              "row": 2,
+              "col": 7
+            },
+            "alive": true
+          },
+          "black-10": {
+            "id": "black-10",
+            "side": "black",
+            "realType": "horse",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 0
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 0
+            },
+            "alive": true
+          },
+          "black-11": {
+            "id": "black-11",
+            "side": "black",
+            "realType": "pawn",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 2
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 2
+            },
+            "alive": true
+          },
+          "black-12": {
+            "id": "black-12",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": true,
+            "bornPos": {
+              "row": 3,
+              "col": 4
+            },
+            "currentPos": {
+              "row": 4,
+              "col": 4
+            },
+            "alive": true
+          },
+          "black-13": {
+            "id": "black-13",
+            "side": "black",
+            "realType": "advisor",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 6
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 6
+            },
+            "alive": true
+          },
+          "black-14": {
+            "id": "black-14",
+            "side": "black",
+            "realType": "cannon",
+            "bornType": "pawn",
+            "isRevealed": false,
+            "bornPos": {
+              "row": 3,
+              "col": 8
+            },
+            "currentPos": {
+              "row": 3,
+              "col": 8
+            },
+            "alive": true
+          }
+        },
+        "turn": "red",
+        "selected": null,
+        "legalMoves": [],
+        "winner": null,
+        "isDraw": false,
+        "quietMoveCount": 2,
+        "moveCount": 4,
+        "message": "轮到红方（被将军）",
+        "positionHistory": [
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-6,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,red-9,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "black|black-0,black-1,black-2,black-3,black-king,black-4,black-5,red-9,black-7/.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-10,.,red-11,.,red-12,.,red-13,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "black|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,black-12,.,black-13,.,black-14/.,.,.,.,.,.,.,.,./.,.,.,.,red-12,.,.,.,./red-10,.,red-11,.,.,.,red-13,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7",
+          "red|black-0,black-1,black-2,black-3,black-king,black-4,black-5,black-7,./.,.,.,.,.,.,.,.,./.,black-8,.,.,.,.,.,black-9,./black-10,.,black-11,.,.,.,black-13,.,black-14/.,.,.,.,black-12,.,.,.,./.,.,.,.,red-12,.,.,.,./red-10,.,red-11,.,.,.,red-13,.,red-14/.,red-8,.,.,.,.,.,.,./.,.,.,.,.,.,.,.,./red-0,red-1,red-2,red-3,red-king,red-4,red-5,red-6,red-7"
+        ],
+        "checkHistory": [
+          null,
+          null,
+          null,
+          "black"
+        ]
+      },
+      "drawOfferBySide": {
+        "red": false,
+        "black": false
+      },
+      "undoRequest": null,
+      "result": null,
+      "termination": null,
+      "moves": [
+        {
+          "ply": 1,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 7,
+            "col": 7
+          },
+          "to": {
+            "row": 0,
+            "col": 7
+          },
+          "pieceText": "兵",
+          "createdAt": "2026-02-19T16:13:47.986Z"
+        },
+        {
+          "ply": 2,
+          "side": "black",
+          "actor": "user",
+          "from": {
+            "row": 0,
+            "col": 8
+          },
+          "to": {
+            "row": 0,
+            "col": 7
+          },
+          "pieceText": "马",
+          "createdAt": "2026-02-19T16:14:40.180Z"
+        },
+        {
+          "ply": 3,
+          "side": "red",
+          "actor": "user",
+          "from": {
+            "row": 6,
+            "col": 4
+          },
+          "to": {
+            "row": 5,
+            "col": 4
+          },
+          "pieceText": "象",
+          "createdAt": "2026-02-19T16:14:56.582Z"
+        },
+        {
+          "ply": 4,
+          "side": "black",
+          "actor": "user",
+          "from": {
+            "row": 3,
+            "col": 4
+          },
+          "to": {
+            "row": 4,
+            "col": 4
+          },
+          "pieceText": "炮",
+          "createdAt": "2026-02-19T16:15:02.633Z"
+        }
+      ]
+    }
+  ]
 }

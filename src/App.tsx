@@ -4,6 +4,7 @@ import { createInitialGame, getPieceLabel, playMove, selectCell } from './game/e
 import type { GameState, Position, Side } from './game/types'
 import { createWorkerAiProvider, type AiProvider } from './game/ai-provider'
 import { createHttpAiProvider } from './game/ai-provider-http'
+import { serverApi, type RankingItem, type ServerMatch, type ServerUser } from './server/api'
 import { playSound } from './sound/effects'
 
 const aliveCount = (game: GameState) =>
@@ -12,9 +13,10 @@ const aliveCount = (game: GameState) =>
 const cloneGameState = (state: GameState): GameState => JSON.parse(JSON.stringify(state)) as GameState
 const MIN_AI_DEPTH = 1
 const MAX_AI_DEPTH = 8
-const AI_TIME_BUDGET_OPTIONS = [500, 1000, 1800, 2500, 3500, 5000, 8000, 10000]
+const AI_TIME_BUDGET_OPTIONS = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
 const DEFAULT_AI_DEPTH = 5
-const DEFAULT_AI_BUDGET = 5000
+const DEFAULT_AI_BUDGET = 2000
+const SERVER_POLL_INTERVAL_MS = 900
 
 interface MoveLogItem {
   id: number
@@ -33,10 +35,41 @@ interface LineCoords {
   y2: number
 }
 
+const BOARD_ROWS = 10
+const BOARD_COLS = 9
+
 const sideText = (side: Side) => (side === 'red' ? '红方' : '黑方')
 const nowMs = () => Date.now()
 
 const actorText = (actor: MoveLogItem['actor']) => (actor === 'ai' ? 'AI' : '人类')
+const oppositeSide = (side: Side): Side => (side === 'red' ? 'black' : 'red')
+const mirrorPos = (pos: Position): Position => ({ row: BOARD_ROWS - 1 - pos.row, col: BOARD_COLS - 1 - pos.col })
+const swapMessageSides = (message: string) => message.replace(/红方/g, '__RED_SIDE__').replace(/黑方/g, '红方').replace(/__RED_SIDE__/g, '黑方')
+
+const swapLocalGameStateSides = (state: GameState): GameState => {
+  const next = cloneGameState(state)
+  const board: (string | null)[][] = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(null))
+
+  for (const piece of Object.values(next.pieces)) {
+    piece.side = oppositeSide(piece.side)
+    piece.currentPos = mirrorPos(piece.currentPos)
+    piece.bornPos = mirrorPos(piece.bornPos)
+    if (piece.alive) {
+      board[piece.currentPos.row][piece.currentPos.col] = piece.id
+    }
+  }
+
+  next.board = board
+  next.turn = oppositeSide(next.turn)
+  next.winner = next.winner ? oppositeSide(next.winner) : null
+  next.selected = next.selected ? mirrorPos(next.selected) : null
+  next.legalMoves = next.legalMoves.map((pos) => mirrorPos(pos))
+  next.message = swapMessageSides(next.message)
+  next.positionHistory = []
+  next.checkHistory = []
+
+  return next
+}
 
 const posText = (pos: Position) => `(${pos.row},${pos.col})`
 
@@ -71,6 +104,29 @@ const decodeBase64Utf8 = (base64: string) => {
   const binary = atob(base64)
   const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
   return new TextDecoder().decode(bytes)
+}
+
+const parseUserIdFromToken = (token: string | null): string | null => {
+  if (!token) return null
+  const parts = token.split('.')
+  if (parts.length < 2) return null
+
+  try {
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const normalized = payload + '='.repeat((4 - (payload.length % 4 || 4)) % 4)
+    const decoded = decodeBase64Utf8(normalized)
+    const parsed = JSON.parse(decoded) as { userId?: unknown }
+    return typeof parsed.userId === 'string' && parsed.userId.length > 0 ? parsed.userId : null
+  } catch {
+    return null
+  }
+}
+
+const getUserSideInMatch = (match: ServerMatch, userId: string | null): Side | null => {
+  if (!userId) return null
+  if (match.red.type === 'user' && match.red.userId === userId) return 'red'
+  if (match.black.type === 'user' && match.black.userId === userId) return 'black'
+  return null
 }
 
 const extractPgnTagValue = (content: string, tag: string): string | null => {
@@ -126,7 +182,13 @@ const extractPgnMoves = (content: string): Array<{ from: Position; to: Position 
   return parsed
 }
 
-const formatThinkMs = (ms: number | null) => (ms === null ? '--' : `${ms}ms`)
+const formatDurationMs = (ms: number) => `${(Math.max(0, ms) / 1000).toFixed(1)}s`
+const formatThinkMs = (ms: number | null) => (ms === null ? '--' : formatDurationMs(ms))
+const formatDateTime = (value: string) => {
+  const ts = Date.parse(value)
+  if (!Number.isFinite(ts)) return value
+  return new Date(ts).toLocaleString('zh-CN', { hour12: false })
+}
 
 const inferMoveInfo = (prev: GameState, next: GameState, mover: Side) => {
   for (const id of Object.keys(prev.pieces)) {
@@ -154,6 +216,46 @@ const computeLastThinkMap = (logs: MoveLogItem[]): Record<Side, number | null> =
   }
 }
 
+const SERVER_TOKEN_KEY = 'flipchess.server.token'
+const PLAY_MODE_KEY = 'flipchess.play.mode'
+const ACTIVE_MATCH_KEY = 'flipchess.server.activeMatchId'
+const LOCAL_SNAPSHOT_KEY = 'flipchess.local.snapshot'
+
+interface LocalSnapshot {
+  game: GameState
+  timeline: GameState[]
+  moveLogs: MoveLogItem[]
+  lastThinkBySide: Record<Side, number | null>
+  boardFlipped: boolean
+  soundOn: boolean
+  aiEnabledBySide: Record<Side, boolean>
+  aiDepthBySide: Record<Side, number>
+  aiTimeBudgetBySide: Record<Side, number>
+  drawOfferBySide: Record<Side, boolean>
+  isReplayMode: boolean
+  replayIndex: number
+}
+
+const mapServerMovesToLogs = (moves: ServerMatch['moves'], matchCreatedAt?: string): MoveLogItem[] => {
+  let prevAt = matchCreatedAt ? Date.parse(matchCreatedAt) : Number.NaN
+
+  return moves.map((item) => {
+    const nowAt = Date.parse(item.createdAt)
+    const thinkMs = Number.isFinite(nowAt) && Number.isFinite(prevAt) ? Math.max(0, nowAt - prevAt) : 0
+    prevAt = nowAt
+
+    return {
+      id: item.ply,
+      side: item.side,
+      actor: item.actor === 'ai' ? 'ai' : 'human',
+      pieceText: item.pieceText,
+      from: { ...item.from },
+      to: { ...item.to },
+      thinkMs,
+    }
+  })
+}
+
 function App() {
   const initialGame = useMemo(() => createInitialGame(), [])
   const [game, setGame] = useState(() => initialGame)
@@ -175,19 +277,92 @@ function App() {
   const [isReplayMode, setIsReplayMode] = useState(false)
   const [replayIndex, setReplayIndex] = useState(0)
   const [actionsCollapsed, setActionsCollapsed] = useState(false)
+  const [playMode, setPlayMode] = useState<'local' | 'server'>(() => {
+    const raw = localStorage.getItem(PLAY_MODE_KEY)
+    return raw === 'server' ? 'server' : 'local'
+  })
+  const [serverToken, setServerToken] = useState<string | null>(() => localStorage.getItem(SERVER_TOKEN_KEY))
+  const [serverUser, setServerUser] = useState<ServerUser | null>(null)
+  const [serverSessionHydrating, setServerSessionHydrating] = useState(() => !!localStorage.getItem(SERVER_TOKEN_KEY))
+  const [serverMatches, setServerMatches] = useState<ServerMatch[]>([])
+  const [activeMatchId, setActiveMatchId] = useState<string | null>(() => localStorage.getItem(ACTIVE_MATCH_KEY))
+  const [rankings, setRankings] = useState<RankingItem[]>([])
+  const [authUsername, setAuthUsername] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [createMode, setCreateMode] = useState<'pvp' | 'vs_ai' | 'ai_vs_ai'>('vs_ai')
+  const [createOpponent, setCreateOpponent] = useState('')
+  const [createAiSide, setCreateAiSide] = useState<Side>('black')
+  const [serverBusy, setServerBusy] = useState(false)
+  const [serverMessage, setServerMessage] = useState('')
+  const [serverView, setServerView] = useState<'match' | 'ranking'>('match')
+  const [clockNowMs, setClockNowMs] = useState(() => nowMs())
   const aiProviderRef = useRef<AiProvider | null>(null)
   const aiSearchTokenRef = useRef(0)
   const pgnInputRef = useRef<HTMLInputElement | null>(null)
+  const serverPgnInputRef = useRef<HTMLInputElement | null>(null)
   const turnStartAtRef = useRef(0)
   const latestGameRef = useRef(game)
   const latestTimelineRef = useRef(timeline)
   const soundOnRef = useRef(soundOn)
+  const activeServerMatchRef = useRef<ServerMatch | null>(null)
+  const serverBootstrapRequestRef = useRef(0)
   const boardRef = useRef<HTMLDivElement | null>(null)
   const cellRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const [lastMoveLine, setLastMoveLine] = useState<LineCoords | null>(null)
+  const localHydratedRef = useRef(false)
 
   const displayedGame = isReplayMode && timeline[replayIndex] ? timeline[replayIndex] : game
+  const activeMatch = useMemo(
+    () => (activeMatchId ? serverMatches.find((match) => match.id === activeMatchId) ?? null : null),
+    [activeMatchId, serverMatches],
+  )
+  const isServerMode = playMode === 'server'
+  const serverUserId = serverUser?.id ?? parseUserIdFromToken(serverToken)
+  const myServerSide: Side | null =
+    activeMatch && serverUserId
+      ? activeMatch.red.type === 'user' && activeMatch.red.userId === serverUserId
+        ? 'red'
+        : activeMatch.black.type === 'user' && activeMatch.black.userId === serverUserId
+          ? 'black'
+          : null
+      : null
+  const pendingUndoFromOpponent =
+    !!activeMatch && !!myServerSide && !!activeMatch.undoRequest && activeMatch.undoRequest.fromSide !== myServerSide
+  const isMyServerTurn = !!activeMatch && !!myServerSide && activeMatch.status === 'ongoing' && game.turn === myServerSide
+  const isRankingView = isServerMode && serverView === 'ranking'
+  const effectiveBoardFlipped = isServerMode ? myServerSide === 'black' : boardFlipped
+  const statusDrawBySide = isServerMode && activeMatch ? activeMatch.drawOfferBySide : drawOfferBySide
+  const statusUndoText = isServerMode && activeMatch?.undoRequest ? `${sideText(activeMatch.undoRequest.fromSide)} 请求中` : '无'
+  const statusRedPlayer = isServerMode
+    ? activeMatch
+      ? activeMatch.red.type === 'user'
+        ? activeMatch.red.username ?? '未知用户'
+        : 'AI'
+      : '--'
+    : '本地玩家'
+  const statusBlackPlayer = isServerMode
+    ? activeMatch
+      ? activeMatch.black.type === 'user'
+        ? activeMatch.black.username ?? '未知用户'
+        : 'AI'
+      : '--'
+    : '本地玩家'
+  const statusSummaryText = `提和状态：红${statusDrawBySide.red ? '已提' : '未提'} / 黑${statusDrawBySide.black ? '已提' : '未提'} ｜ 悔棋请求：${statusUndoText} ｜ 双方：红方${statusRedPlayer} / 黑方${statusBlackPlayer}`
   const aiThinkingSide: Side | null = !isReplayMode && !game.winner && !game.isDraw && aiEnabledBySide[game.turn] ? game.turn : null
+  const useCreateAiConfig = createMode === 'ai_vs_ai' || createMode === 'vs_ai'
+  const serverAiEnabledBySide: Record<Side, boolean> = {
+    red: createMode === 'ai_vs_ai' ? true : createMode === 'vs_ai' ? createAiSide === 'red' : activeMatch ? activeMatch.red.type === 'ai' : true,
+    black: createMode === 'ai_vs_ai' ? true : createMode === 'vs_ai' ? createAiSide === 'black' : activeMatch ? activeMatch.black.type === 'ai' : true,
+  }
+  const serverAiDepthBySide: Record<Side, number> = {
+    red: useCreateAiConfig ? aiDepthBySide.red : activeMatch?.red.aiDepth ?? aiDepthBySide.red,
+    black: useCreateAiConfig ? aiDepthBySide.black : activeMatch?.black.aiDepth ?? aiDepthBySide.black,
+  }
+  const serverAiTimeBudgetBySide: Record<Side, number> = {
+    red: useCreateAiConfig ? aiTimeBudgetBySide.red : activeMatch?.red.aiTimeBudgetMs ?? aiTimeBudgetBySide.red,
+    black: useCreateAiConfig ? aiTimeBudgetBySide.black : activeMatch?.black.aiTimeBudgetMs ?? aiTimeBudgetBySide.black,
+  }
+  const currentUserRank = serverUser ? rankings.findIndex((item) => item.userId === serverUser.id) + 1 : 0
 
   const legalKeySet = useMemo(() => {
     return new Set(displayedGame.legalMoves.map((m) => `${m.row}-${m.col}`))
@@ -202,12 +377,131 @@ function App() {
   }, [timeline])
 
   useEffect(() => {
+    if (playMode !== 'local') {
+      localHydratedRef.current = true
+      return
+    }
+
+    const raw = localStorage.getItem(LOCAL_SNAPSHOT_KEY)
+    if (!raw) {
+      localHydratedRef.current = true
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<LocalSnapshot>
+      if (!parsed.game || !parsed.timeline || !parsed.moveLogs) {
+        localHydratedRef.current = true
+        return
+      }
+
+      if (!isGameStateLike(parsed.game) || !Array.isArray(parsed.timeline) || !parsed.timeline.every(isGameStateLike)) {
+        localHydratedRef.current = true
+        return
+      }
+
+      setGame(cloneGameState(parsed.game))
+      setTimeline(parsed.timeline.map((item) => cloneGameState(item)))
+      setMoveLogs(parsed.moveLogs)
+      setLastThinkBySide(parsed.lastThinkBySide ?? { red: null, black: null })
+      setBoardFlipped(parsed.boardFlipped ?? false)
+      setSoundOn(parsed.soundOn ?? true)
+      setAiEnabledBySide(parsed.aiEnabledBySide ?? { red: false, black: false })
+      setAiDepthBySide(parsed.aiDepthBySide ?? { red: DEFAULT_AI_DEPTH, black: DEFAULT_AI_DEPTH })
+      setAiTimeBudgetBySide(parsed.aiTimeBudgetBySide ?? { red: DEFAULT_AI_BUDGET, black: DEFAULT_AI_BUDGET })
+      setDrawOfferBySide(parsed.drawOfferBySide ?? { red: false, black: false })
+      setIsReplayMode(parsed.isReplayMode ?? false)
+      setReplayIndex(Math.max(0, Math.min(parsed.replayIndex ?? 0, parsed.timeline.length - 1)))
+    } catch {
+      // ignore malformed snapshot
+    } finally {
+      localHydratedRef.current = true
+    }
+  }, [playMode])
+
+  useEffect(() => {
+    localStorage.setItem(PLAY_MODE_KEY, playMode)
+  }, [playMode])
+
+  useEffect(() => {
+    if (serverToken) {
+      localStorage.setItem(SERVER_TOKEN_KEY, serverToken)
+    } else {
+      localStorage.removeItem(SERVER_TOKEN_KEY)
+    }
+  }, [serverToken])
+
+  useEffect(() => {
+    if (activeMatchId) {
+      localStorage.setItem(ACTIVE_MATCH_KEY, activeMatchId)
+    } else {
+      localStorage.removeItem(ACTIVE_MATCH_KEY)
+    }
+  }, [activeMatchId])
+
+  useEffect(() => {
+    if (!localHydratedRef.current) return
+    if (playMode !== 'local') return
+
+    const snapshot: LocalSnapshot = {
+      game: cloneGameState(game),
+      timeline: timeline.map((item) => cloneGameState(item)),
+      moveLogs,
+      lastThinkBySide,
+      boardFlipped,
+      soundOn,
+      aiEnabledBySide,
+      aiDepthBySide,
+      aiTimeBudgetBySide,
+      drawOfferBySide,
+      isReplayMode,
+      replayIndex,
+    }
+    localStorage.setItem(LOCAL_SNAPSHOT_KEY, JSON.stringify(snapshot))
+  }, [
+    playMode,
+    game,
+    timeline,
+    moveLogs,
+    lastThinkBySide,
+    boardFlipped,
+    soundOn,
+    aiEnabledBySide,
+    aiDepthBySide,
+    aiTimeBudgetBySide,
+    drawOfferBySide,
+    isReplayMode,
+    replayIndex,
+  ])
+
+  useEffect(() => {
+    if (playMode !== 'server') return
+    if (isReplayMode) {
+      setIsReplayMode(false)
+      setReplayIndex(0)
+    }
+  }, [playMode, isReplayMode])
+
+  useEffect(() => {
     turnStartAtRef.current = nowMs()
   }, [])
 
   useEffect(() => {
     soundOnRef.current = soundOn
   }, [soundOn])
+
+  useEffect(() => {
+    activeServerMatchRef.current = activeMatch
+  }, [activeMatch])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setClockNowMs(nowMs())
+    }, 250)
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [])
 
   useEffect(() => {
     const providerKind = (import.meta.env.VITE_AI_PROVIDER ?? 'worker').toString().toLowerCase()
@@ -227,8 +521,491 @@ function App() {
     }
   }, [])
 
-  const handleCellClick = (row: number, col: number) => {
+  const applyServerMatch = (match: ServerMatch) => {
+    const prevMatch = activeServerMatchRef.current
+    if (soundOnRef.current && prevMatch && prevMatch.id === match.id) {
+      const moved = match.moves.length > prevMatch.moves.length || match.state.moveCount > prevMatch.state.moveCount
+      if (moved) {
+        const capture = aliveCount(match.state) < aliveCount(prevMatch.state)
+        const checkedNow = match.state.message.includes('被将军') && !prevMatch.state.message.includes('被将军')
+        const wonNow = (!prevMatch.state.winner && !!match.state.winner) || (!prevMatch.state.isDraw && match.state.isDraw)
+
+        if (wonNow) {
+          void playSound('win')
+        } else if (checkedNow) {
+          void playSound('check')
+        } else if (capture) {
+          void playSound('capture')
+        } else {
+          void playSound('move')
+        }
+      }
+    }
+
+    const drawAgreedNow =
+      match.status === 'finished' &&
+      match.result === 'draw' &&
+      !!match.termination &&
+      match.termination.includes('协议和棋') &&
+      (!prevMatch ||
+        prevMatch.id !== match.id ||
+        prevMatch.status !== 'finished' ||
+        prevMatch.result !== 'draw' ||
+        prevMatch.termination !== match.termination)
+
+    const undoAcceptedNow =
+      !!prevMatch &&
+      prevMatch.id === match.id &&
+      !!prevMatch.undoRequest &&
+      !match.undoRequest &&
+      (match.state.moveCount < prevMatch.state.moveCount || match.moves.length < prevMatch.moves.length)
+
+    if (drawAgreedNow) {
+      setServerMessage('提和已达成，当前对局和棋')
+    } else if (undoAcceptedNow) {
+      setServerMessage('悔棋已同意，已回退一步')
+    }
+
+    setServerMatches((prev) => {
+      const idx = prev.findIndex((item) => item.id === match.id)
+      if (idx < 0) return [match, ...prev]
+      const next = [...prev]
+      next[idx] = match
+      return next
+    })
+    setActiveMatchId(match.id)
+
+    const latestGame = latestGameRef.current
+    const currentUserId = serverUser?.id ?? parseUserIdFromToken(serverToken)
+    const incomingMySide = getUserSideInMatch(match, currentUserId)
+    const incomingMyTurn = !!incomingMySide && match.status === 'ongoing' && match.state.turn === incomingMySide
+    const noNewMove = match.state.moveCount === latestGame.moveCount
+    const shouldResetTurnStart = !prevMatch || prevMatch.id !== match.id || match.state.turn !== latestGame.turn || !noNewMove
+    const preserveLocalInteraction = incomingMyTurn && noNewMove
+
+    if (!preserveLocalInteraction) {
+      setGame(cloneGameState(match.state))
+      setTimeline([cloneGameState(match.state)])
+      setReplayIndex(0)
+      setIsReplayMode(false)
+      const logs = mapServerMovesToLogs(match.moves, match.createdAt)
+      setMoveLogs(logs)
+      setLastThinkBySide(computeLastThinkMap(logs))
+      setDrawOfferBySide({ red: false, black: false })
+      if (shouldResetTurnStart) {
+        turnStartAtRef.current = nowMs()
+      }
+    }
+
+    activeServerMatchRef.current = match
+  }
+
+  const refreshRankings = async () => {
+    try {
+      const data = await serverApi.rankings()
+      setRankings(data.ranking)
+    } catch {
+      setRankings([])
+    }
+  }
+
+  useEffect(() => {
+    if (!serverToken) {
+      setServerSessionHydrating(false)
+      setServerUser(null)
+      setServerMatches([])
+      setActiveMatchId(null)
+      setRankings([])
+      return
+    }
+
+    setServerSessionHydrating(true)
+
+    const requestId = serverBootstrapRequestRef.current + 1
+    serverBootstrapRequestRef.current = requestId
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const me = await serverApi.me(serverToken)
+        if (cancelled || requestId !== serverBootstrapRequestRef.current) return
+        setServerUser(me.user)
+
+        const data = await serverApi.listMatches(serverToken, true)
+        if (cancelled || requestId !== serverBootstrapRequestRef.current) return
+        setServerMatches(data.matches)
+
+        if (data.matches.length > 0) {
+          const preferredMatch = activeMatchId ? data.matches.find((item) => item.id === activeMatchId) : undefined
+          const nextMatch = preferredMatch ?? data.matches[0]
+          applyServerMatch(nextMatch)
+        } else {
+          setActiveMatchId(null)
+        }
+
+        await refreshRankings()
+        if (cancelled || requestId !== serverBootstrapRequestRef.current) return
+        setServerSessionHydrating(false)
+      } catch (error) {
+        if (cancelled || requestId !== serverBootstrapRequestRef.current) return
+        setServerMessage(error instanceof Error ? error.message : '服务器连接失败')
+        setServerSessionHydrating(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [serverToken, activeMatchId])
+
+  useEffect(() => {
+    if (!isServerMode || !serverToken || !activeMatch) return
+    if (activeMatch.status === 'finished') return
+
+    let stopped = false
+    let inFlight = false
+
+    const poll = () => {
+      if (stopped || inFlight) return
+      inFlight = true
+      void serverApi
+        .getMatch(serverToken, activeMatch.id)
+        .then((data) => {
+          applyServerMatch(data.match)
+        })
+        .catch(() => {
+          // silent polling failure
+        })
+        .finally(() => {
+          inFlight = false
+        })
+    }
+
+    poll()
+    const timer = window.setInterval(poll, SERVER_POLL_INTERVAL_MS)
+
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
+  }, [isServerMode, serverToken, activeMatch])
+
+  const handleRegister = async () => {
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.register(authUsername.trim(), authPassword)
+      setServerToken(data.token)
+      localStorage.setItem(SERVER_TOKEN_KEY, data.token)
+      setAuthPassword('')
+      setServerMessage('注册成功并已登录')
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '注册失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const handleLogin = async () => {
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.login(authUsername.trim(), authPassword)
+      setServerToken(data.token)
+      localStorage.setItem(SERVER_TOKEN_KEY, data.token)
+      setAuthPassword('')
+      setServerMessage('登录成功')
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '登录失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const handleLogout = () => {
+    setServerToken(null)
+    setServerUser(null)
+    setServerMatches([])
+    setActiveMatchId(null)
+    setServerView('match')
+    setServerMessage('已退出登录')
+    localStorage.removeItem(SERVER_TOKEN_KEY)
+  }
+
+  const openRankingPage = async () => {
+    setServerView('ranking')
+    await refreshRankings()
+  }
+
+  const handleCreateMatch = async () => {
+    if (!serverToken) return
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.createMatch(serverToken, {
+        mode: createMode,
+        opponentUsername: createMode === 'pvp' ? createOpponent.trim() : undefined,
+        aiSide: createMode === 'vs_ai' ? createAiSide : undefined,
+        aiDepthBySide,
+        aiTimeBudgetBySide,
+      })
+      applyServerMatch(data.match)
+      await refreshRankings()
+      setServerMessage('对局创建成功')
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '创建对局失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const handleImportPgnToServer = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file || !serverToken) return
+
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const text = await file.text()
+      const setupTag = extractPgnTagValue(text, 'FlipChessSetup')
+      const moves = extractPgnMoves(text)
+      if (!setupTag) {
+        setServerMessage('该 PGN 缺少 FlipChessSetup，无法准确建局')
+        return
+      }
+
+      let setupState: GameState
+      try {
+        const decoded = JSON.parse(decodeBase64Utf8(setupTag)) as unknown
+        if (!isGameStateLike(decoded)) {
+          setServerMessage('PGN 初始局面无效')
+          return
+        }
+        setupState = cloneGameState(decoded)
+      } catch {
+        setServerMessage('PGN 初始局面解析失败')
+        return
+      }
+
+      const data = await serverApi.createMatch(serverToken, {
+        mode: createMode,
+        opponentUsername: createMode === 'pvp' ? createOpponent.trim() : undefined,
+        aiSide: createMode === 'vs_ai' ? createAiSide : undefined,
+        aiDepthBySide,
+        aiTimeBudgetBySide,
+        pgnSetup: setupState,
+        pgnMoves: moves,
+      })
+
+      applyServerMatch(data.match)
+      await refreshRankings()
+      setServerMessage(`已从 PGN 导入并创建在线对局（${moves.length} 步）`)
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '导入 PGN 创建对局失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const openMatch = async (matchId: string) => {
+    if (!serverToken) return
+    setServerBusy(true)
+    try {
+      const data = await serverApi.getMatch(serverToken, matchId)
+      applyServerMatch(data.match)
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '加载对局失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!serverToken) return
+    const ok = window.confirm('确认删除该对局吗？删除后无法恢复。')
+    if (!ok) return
+
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      await serverApi.deleteMatch(serverToken, matchId)
+      setServerMatches((prev) => prev.filter((item) => item.id !== matchId))
+      if (activeMatchId === matchId) {
+        setActiveMatchId(null)
+      }
+      setServerMessage('对局已删除')
+      await refreshRankings()
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '删除对局失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const updateServerAiDepth = async (side: Side, delta: number) => {
+    if (useCreateAiConfig || !activeMatch) {
+      if (!serverAiEnabledBySide[side]) return
+      setAiDepthBySide((prev) => {
+        const nextDepth = Math.max(MIN_AI_DEPTH, Math.min(MAX_AI_DEPTH, prev[side] + delta))
+        if (nextDepth === prev[side]) return prev
+        return { ...prev, [side]: nextDepth }
+      })
+      return
+    }
+
+    if (!serverToken) return
+    const slot = side === 'red' ? activeMatch.red : activeMatch.black
+    if (slot.type !== 'ai') return
+
+    const nextDepth = Math.max(MIN_AI_DEPTH, Math.min(MAX_AI_DEPTH, slot.aiDepth + delta))
+    if (nextDepth === slot.aiDepth) return
+
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.updateMatchAiConfig(serverToken, activeMatch.id, {
+        aiDepthBySide: { [side]: nextDepth },
+      })
+      applyServerMatch(data.match)
+      setServerMessage(`${sideText(side)}AI层数已更新为 ${nextDepth}`)
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '更新AI层数失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const updateServerAiBudget = async (side: Side, value: string) => {
+    const nextBudget = Number(value)
+    if (Number.isNaN(nextBudget) || nextBudget <= 0) return
+
+    if (useCreateAiConfig || !activeMatch) {
+      if (!serverAiEnabledBySide[side]) return
+      setAiTimeBudgetBySide((prev) => ({ ...prev, [side]: nextBudget }))
+      return
+    }
+
+    if (!serverToken) return
+    const slot = side === 'red' ? activeMatch.red : activeMatch.black
+    if (slot.type !== 'ai') return
+
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.updateMatchAiConfig(serverToken, activeMatch.id, {
+        aiTimeBudgetBySide: { [side]: nextBudget },
+      })
+      applyServerMatch(data.match)
+      setServerMessage(`${sideText(side)}AI时限已更新为 ${nextBudget}ms`)
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '更新AI时限失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const handleServerDrawOffer = async () => {
+    if (!serverToken || !activeMatch) return
+    setServerBusy(true)
+    setServerMessage('')
+    const mySide = myServerSide
+    try {
+      const data = await serverApi.drawOffer(serverToken, activeMatch.id)
+      applyServerMatch(data.match)
+      await refreshRankings()
+      if (data.match.status === 'finished' && data.match.result === 'draw') {
+        setServerMessage('提和已达成，当前对局和棋')
+      } else if (mySide && data.match.drawOfferBySide[mySide]) {
+        setServerMessage('已发起提和请求')
+      } else {
+        setServerMessage('已取消提和请求')
+      }
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '提和操作失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const handleServerResign = async () => {
+    if (!serverToken || !activeMatch) return
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.resign(serverToken, activeMatch.id)
+      applyServerMatch(data.match)
+      await refreshRankings()
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '认输失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const handleServerUndoAction = async (action?: 'request' | 'cancel' | 'accept' | 'reject') => {
+    if (!serverToken || !activeMatch) return
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.undoRequest(serverToken, activeMatch.id, action)
+      applyServerMatch(data.match)
+      await refreshRankings()
+      if (action === 'accept') {
+        setServerMessage('已同意悔棋')
+      } else if (action === 'reject') {
+        setServerMessage('已拒绝悔棋请求')
+      } else if (action === 'cancel') {
+        setServerMessage('已取消悔棋请求')
+      } else {
+        setServerMessage('已发起悔棋请求')
+      }
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '悔棋请求操作失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const handleCellClick = async (row: number, col: number) => {
     if (isReplayMode) return
+    if (isServerMode) {
+      if (!serverToken || !activeMatch) return
+
+      const prevServer = game
+      const nextServer = selectCell(prevServer, { row, col })
+      const movedServer = nextServer.moveCount > prevServer.moveCount
+
+      if (!movedServer) {
+        setGame(nextServer)
+        const selected = !prevServer.selected && !!nextServer.selected
+        if (selected && soundOn) {
+          void playSound('select')
+        }
+        return
+      }
+
+      const moveInfo = inferMoveInfo(prevServer, nextServer, prevServer.turn)
+      if (!moveInfo) return
+
+      setGame(nextServer)
+
+      setServerBusy(true)
+      setServerMessage('')
+      try {
+        const data = await serverApi.move(serverToken, activeMatch.id, moveInfo.from, moveInfo.to)
+        applyServerMatch(data.match)
+        await refreshRankings()
+      } catch (error) {
+        setGame(prevServer)
+        setServerMessage(error instanceof Error ? error.message : '落子失败')
+      } finally {
+        setServerBusy(false)
+      }
+      return
+    }
+
     if (aiEnabledBySide[game.turn]) return
 
     const prev = game
@@ -379,15 +1156,46 @@ function App() {
     setBoardFlipped((prev) => !prev)
   }
 
+  const swapLocalSides = () => {
+    if (isServerMode) return
+
+    const swappedGame = swapLocalGameStateSides(game)
+    const swappedTimeline = timeline.map((item) => swapLocalGameStateSides(item))
+    const swappedLogs = moveLogs.map((item) => ({
+      ...item,
+      side: oppositeSide(item.side),
+      from: mirrorPos(item.from),
+      to: mirrorPos(item.to),
+    }))
+
+    setGame(swappedGame)
+    setTimeline(swappedTimeline)
+    setMoveLogs(swappedLogs)
+    setLastThinkBySide({ red: lastThinkBySide.black, black: lastThinkBySide.red })
+    setDrawOfferBySide({ red: drawOfferBySide.black, black: drawOfferBySide.red })
+    setAiEnabledBySide({ red: aiEnabledBySide.black, black: aiEnabledBySide.red })
+    setAiDepthBySide({ red: aiDepthBySide.black, black: aiDepthBySide.red })
+    setAiTimeBudgetBySide({ red: aiTimeBudgetBySide.black, black: aiTimeBudgetBySide.red })
+    turnStartAtRef.current = nowMs()
+    setServerMessage('已交换双方局面')
+  }
+
   const exportPgn = () => {
-    const result = pgnResultText(game)
-    const startState = timeline[0] ? cloneGameState(timeline[0]) : createInitialGame()
+    const exportState = isServerMode && activeMatch ? activeMatch.state : game
+    const result = pgnResultText(exportState)
+    const startState =
+      isServerMode && activeMatch
+        ? cloneGameState(activeMatch.initialState ?? activeMatch.state)
+        : timeline[0]
+          ? cloneGameState(timeline[0])
+          : createInitialGame()
     const setupPayload = encodeBase64Utf8(JSON.stringify(startState))
+    const sourceMoves = isServerMode && activeMatch ? mapServerMovesToLogs(activeMatch.moves, activeMatch.createdAt) : moveLogs
     const movetextParts: string[] = []
 
-    for (let idx = 0; idx < moveLogs.length; idx += 2) {
-      const redMove = moveLogs[idx]
-      const blackMove = moveLogs[idx + 1]
+    for (let idx = 0; idx < sourceMoves.length; idx += 2) {
+      const redMove = sourceMoves[idx]
+      const blackMove = sourceMoves[idx + 1]
       if (!redMove) break
 
       const round = Math.floor(idx / 2) + 1
@@ -405,16 +1213,16 @@ function App() {
     }
 
     const headers = [
-      `[Event "FlipChess Game"]`,
-      `[Site "Local"]`,
+      `[Event "${isServerMode && activeMatch ? 'FlipChess Server Match' : 'FlipChess Game'}"]`,
+      `[Site "${isServerMode && activeMatch ? 'Server' : 'Local'}"]`,
       `[Date "${pgnDateText()}"]`,
-      `[Round "-"]`,
-      `[White "Red"]`,
-      `[Black "Black"]`,
+      `[Round "${isServerMode && activeMatch ? activeMatch.id : '-'}"]`,
+      `[White "${isServerMode && activeMatch ? activeMatch.red.username ?? 'Red' : 'Red'}"]`,
+      `[Black "${isServerMode && activeMatch ? activeMatch.black.username ?? 'Black' : 'Black'}"]`,
       `[Result "${result}"]`,
       `[Variant "FlipChess"]`,
       `[FlipChessSetup "${setupPayload}"]`,
-      `[Termination "${sanitizePgnTag(game.message)}"]`,
+      `[Termination "${sanitizePgnTag(exportState.message)}"]`,
     ]
 
     const pgnContent = `${headers.join('\n')}\n\n${movetextParts.join(' ')}\n`
@@ -565,6 +1373,24 @@ function App() {
     )
   }, [moveLogs])
 
+  const liveTurnElapsedMs = !isReplayMode && !game.winner && !game.isDraw ? Math.max(0, clockNowMs - turnStartAtRef.current) : 0
+
+  const liveThinkBySide = useMemo<Record<Side, number | null>>(() => {
+    const next: Record<Side, number | null> = { ...lastThinkBySide }
+    if (!isReplayMode && !game.winner && !game.isDraw) {
+      next[game.turn] = liveTurnElapsedMs
+    }
+    return next
+  }, [lastThinkBySide, isReplayMode, game.turn, game.winner, game.isDraw, liveTurnElapsedMs])
+
+  const liveThinkTotals = useMemo<Record<Side, number>>(() => {
+    const next: Record<Side, number> = { ...thinkTotals }
+    if (!isReplayMode && !game.winner && !game.isDraw) {
+      next[game.turn] += liveTurnElapsedMs
+    }
+    return next
+  }, [thinkTotals, isReplayMode, game.turn, game.winner, game.isDraw, liveTurnElapsedMs])
+
   useEffect(() => {
     const updateLine = () => {
       if (!lastMove || !boardRef.current) {
@@ -599,11 +1425,12 @@ function App() {
     return () => {
       window.removeEventListener('resize', updateLine)
     }
-  }, [lastMove, displayedGame, boardFlipped, isReplayMode, replayIndex])
+  }, [lastMove, displayedGame, effectiveBoardFlipped, isReplayMode, replayIndex])
 
   useEffect(() => {
     aiSearchTokenRef.current += 1
     const searchToken = aiSearchTokenRef.current
+    if (isServerMode) return
     const side = game.turn
     if (!aiEnabledBySide[side]) return
     if (isReplayMode) return
@@ -673,147 +1500,466 @@ function App() {
       .catch(() => {
         if (searchToken !== aiSearchTokenRef.current) return
       })
-  }, [aiEnabledBySide, isReplayMode, game, aiDepthBySide, aiTimeBudgetBySide])
+  }, [isServerMode, aiEnabledBySide, isReplayMode, game, aiDepthBySide, aiTimeBudgetBySide])
 
   return (
     <div className="page">
-      <header className="topbar">
-        <div className="topbar-head">
-          <h1>揭棋</h1>
-          <button type="button" className="collapse-toggle" onClick={() => setActionsCollapsed((prev) => !prev)}>
-            {actionsCollapsed ? '展开操作' : '折叠操作'}
-          </button>
-        </div>
-        <div className={`actions ${actionsCollapsed ? 'collapsed' : ''}`}>
-          <button type="button" onClick={toggleSound}>
-            音效：{soundOn ? '开' : '关'}
-          </button>
-          <button type="button" onClick={() => toggleAiForSide('red')}>
-            红方AI：{aiEnabledBySide.red ? '开' : '关'}
-          </button>
-          <button type="button" onClick={() => toggleDrawOffer('red')} disabled={isReplayMode || !!game.winner || game.isDraw}>
-            {drawOfferBySide.red ? '红方取消提和' : '红方提和'}
-          </button>
-          <div className="ai-depth" aria-label="红方AI搜索层数">
-            <button type="button" onClick={() => decreaseAiDepth('red')} disabled={aiDepthBySide.red <= MIN_AI_DEPTH}>
-              -
-            </button>
-            <span>红层：{aiDepthBySide.red}</span>
-            <button type="button" onClick={() => increaseAiDepth('red')} disabled={aiDepthBySide.red >= MAX_AI_DEPTH}>
-              +
-            </button>
-          </div>
-          <label className="ai-budget" aria-label="红方AI思考时限">
-            <span>红时限</span>
-            <select value={aiTimeBudgetBySide.red} onChange={(event) => updateAiBudget('red', event.target.value)}>
-              {AI_TIME_BUDGET_OPTIONS.map((ms) => (
-                <option key={ms} value={ms}>
-                  {ms}ms
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" onClick={() => toggleAiForSide('black')}>
-            黑方AI：{aiEnabledBySide.black ? '开' : '关'}
-          </button>
-          <button type="button" onClick={() => toggleDrawOffer('black')} disabled={isReplayMode || !!game.winner || game.isDraw}>
-            {drawOfferBySide.black ? '黑方取消提和' : '黑方提和'}
-          </button>
-          <div className="ai-depth" aria-label="黑方AI搜索层数">
-            <button type="button" onClick={() => decreaseAiDepth('black')} disabled={aiDepthBySide.black <= MIN_AI_DEPTH}>
-              -
-            </button>
-            <span>黑层：{aiDepthBySide.black}</span>
-            <button type="button" onClick={() => increaseAiDepth('black')} disabled={aiDepthBySide.black >= MAX_AI_DEPTH}>
-              +
-            </button>
-          </div>
-          <label className="ai-budget" aria-label="黑方AI思考时限">
-            <span>黑时限</span>
-            <select value={aiTimeBudgetBySide.black} onChange={(event) => updateAiBudget('black', event.target.value)}>
-              {AI_TIME_BUDGET_OPTIONS.map((ms) => (
-                <option key={ms} value={ms}>
-                  {ms}ms
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" onClick={toggleBoardSide}>
-            交换棋盘
-          </button>
-          <button type="button" onClick={undoMove} disabled={timeline.length <= 1 || isReplayMode}>
-            悔棋
-          </button>
-          <button type="button" onClick={toggleReplay} disabled={timeline.length <= 1}>
-            {isReplayMode ? '退出复盘' : '进入复盘'}
-          </button>
-          <button type="button" onClick={restart}>
-            重新开局
-          </button>
-          <button type="button" onClick={exportPgn}>
-            导出PGN
-          </button>
-          <button type="button" onClick={() => pgnInputRef.current?.click()}>
-            导入PGN
-          </button>
-          <input ref={pgnInputRef} type="file" accept=".pgn,text/plain" style={{ display: 'none' }} onChange={importPgn} />
-        </div>
-      </header>
-
-      <section className="status">
-        <div>
-          {displayedGame.message}
-          {aiThinkingSide ? `（${sideText(aiThinkingSide)}AI思考中）` : ''}
-        </div>
-        <div>步数：{displayedGame.moveCount}</div>
-        <div>提和：红方{drawOfferBySide.red ? '已提' : '未提'} / 黑方{drawOfferBySide.black ? '已提' : '未提'}</div>
-      </section>
-
-      <details className="insights-panel">
-        <summary>对局信息</summary>
-        <section className="insights">
-          <div className="think-row">
-            <span>红方思考：{formatThinkMs(lastThinkBySide.red)}</span>
-            <span>黑方思考：{formatThinkMs(lastThinkBySide.black)}</span>
-          </div>
-          <div className="think-row total">
-            <span>红方总时长：{thinkTotals.red}ms</span>
-            <span>黑方总时长：{thinkTotals.black}ms</span>
-          </div>
-          <div className="last-row">
-            对手上一步：
-            {opponentLastMove
-              ? `${sideText(opponentLastMove.side)} ${opponentLastMove.pieceText} ${posText(opponentLastMove.from)}→${posText(opponentLastMove.to)}（${actorText(opponentLastMove.actor)} ${opponentLastMove.thinkMs}ms）`
-              : '暂无'}
-          </div>
-          {recentMoves.length > 0 && (
-            <div className="move-list">
-              {recentMoves.map((log) => (
-                <div key={`${log.id}-${log.side}-${log.from.row}-${log.from.col}`}>
-                  {log.id}. {sideText(log.side)} {log.pieceText} {posText(log.from)}→{posText(log.to)} · {actorText(log.actor)} · {log.thinkMs}ms
+      {!actionsCollapsed && (
+        <>
+          <header className={`topbar${isRankingView ? ' ranking-mode' : ''}`}>
+            <div className="topbar-head">
+              <h1>揭棋</h1>
+              {!isRankingView && (
+                <div className="head-actions">
+                  <button type="button" className={`mode-toggle ${playMode === 'local' ? 'active' : ''}`} onClick={() => setPlayMode('local')}>
+                    本地模式
+                  </button>
+                  <button type="button" className={`mode-toggle ${playMode === 'server' ? 'active' : ''}`} onClick={() => setPlayMode('server')}>
+                    服务器模式
+                  </button>
+                  <button type="button" className="collapse-toggle" onClick={() => setActionsCollapsed((prev) => !prev)}>
+                    折叠操作
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </section>
-      </details>
+            {isServerMode && (
+              <section className={`server-panel${isRankingView ? ' ranking-mode' : ''}`}>
+                <div className="server-row">
+                  {serverSessionHydrating && serverToken ? (
+                    <span>正在恢复登录状态...</span>
+                  ) : serverUser ? (
+                    <>
+                      <span>当前用户：{serverUser.username}（排名：{currentUserRank > 0 ? `#${currentUserRank}` : '--'}）</span>
+                      {serverView !== 'ranking' && (
+                        <button type="button" onClick={() => void openRankingPage()} disabled={serverBusy}>
+                          排行榜
+                        </button>
+                      )}
+                      <button type="button" onClick={handleLogout} disabled={serverBusy}>
+                        退出
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        value={authUsername}
+                        onChange={(event) => setAuthUsername(event.target.value)}
+                        placeholder="用户名"
+                        autoComplete="username"
+                      />
+                      <input
+                        type="password"
+                        value={authPassword}
+                        onChange={(event) => setAuthPassword(event.target.value)}
+                        placeholder="密码"
+                        autoComplete="current-password"
+                      />
+                      <button type="button" onClick={handleRegister} disabled={serverBusy}>
+                        注册
+                      </button>
+                      <button type="button" onClick={handleLogin} disabled={serverBusy}>
+                        登录
+                      </button>
+                    </>
+                  )}
+                </div>
+                {serverUser && serverView === 'match' && (
+                  <>
+                    <div className="server-row">
+                      <select value={createMode} onChange={(event) => setCreateMode(event.target.value as 'pvp' | 'vs_ai' | 'ai_vs_ai')}>
+                        <option value="vs_ai">人机对战</option>
+                        <option value="pvp">人人对战</option>
+                        <option value="ai_vs_ai">双AI对战</option>
+                      </select>
+                      {createMode === 'pvp' && (
+                        <input value={createOpponent} onChange={(event) => setCreateOpponent(event.target.value)} placeholder="对手用户名" />
+                      )}
+                      {createMode === 'vs_ai' && (
+                        <select value={createAiSide} onChange={(event) => setCreateAiSide(event.target.value as Side)}>
+                          <option value="red">AI执红</option>
+                          <option value="black">AI执黑</option>
+                        </select>
+                      )}
+                      <button type="button" onClick={handleCreateMatch} disabled={serverBusy}>
+                        创建对局
+                      </button>
+                      <button type="button" onClick={() => serverPgnInputRef.current?.click()} disabled={serverBusy}>
+                        导入PGN建局
+                      </button>
+                      <input
+                        ref={serverPgnInputRef}
+                        type="file"
+                        accept=".pgn,text/plain"
+                        style={{ display: 'none' }}
+                        onChange={handleImportPgnToServer}
+                      />
+                    </div>
+                    <div className="server-row list">
+                      <span>我的对局：</span>
+                      <div className="server-list">
+                        {serverMatches.map((item) => (
+                          <div key={item.id} className="server-match-item">
+                            <button
+                              type="button"
+                              className={item.id === activeMatchId ? 'active' : ''}
+                              onClick={() => {
+                                void openMatch(item.id)
+                              }}
+                            >
+                              {item.mode} · {item.status} · {item.id.slice(0, 6)}
+                            </button>
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => {
+                                void handleDeleteMatch(item.id)
+                              }}
+                              title="删除该对局"
+                            >
+                              删除
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+                {serverUser && serverView === 'ranking' && (
+                  <section className="ranking-page">
+                    <div className="ranking-list">
+                      <div className="ranking-sticky-row">
+                        <button type="button" onClick={() => setServerView('match')}>
+                          返回对局
+                        </button>
+                      </div>
+                      {rankings.map((item, idx) => (
+                        <div key={item.userId} className="ranking-item">
+                          <span>#{idx + 1}</span>
+                          <span>{item.username}</span>
+                          <span>{item.points}分</span>
+                          <span>注册：{formatDateTime(item.registeredAt)}</span>
+                          <span>达到当前积分：{formatDateTime(item.reachedAt)}</span>
+                        </div>
+                      ))}
+                      {rankings.length > 0 && <div className="ranking-end">已到底部</div>}
+                    </div>
+                  </section>
+                )}
+                {serverMessage && <div className="server-message">{serverMessage}</div>}
+              </section>
+            )}
+            {!isRankingView && <div className="actions">
+              <button type="button" onClick={toggleSound}>
+                音效：{soundOn ? '开' : '关'}
+              </button>
+              {!isServerMode && (
+                <>
+                  <button type="button" onClick={() => toggleAiForSide('red')}>
+                    红方AI：{aiEnabledBySide.red ? '开' : '关'}
+                  </button>
+                  <button type="button" onClick={() => toggleDrawOffer('red')} disabled={isReplayMode || !!game.winner || game.isDraw}>
+                    {drawOfferBySide.red ? '红方取消提和' : '红方提和'}
+                  </button>
+                  <div className="ai-depth" aria-label="红方AI搜索层数">
+                    <button type="button" onClick={() => decreaseAiDepth('red')} disabled={aiDepthBySide.red <= MIN_AI_DEPTH}>
+                      -
+                    </button>
+                    <span>红层：{aiDepthBySide.red}</span>
+                    <button type="button" onClick={() => increaseAiDepth('red')} disabled={aiDepthBySide.red >= MAX_AI_DEPTH}>
+                      +
+                    </button>
+                  </div>
+                  <label className="ai-budget" aria-label="红方AI思考时限">
+                    <span>红时限</span>
+                    <select value={aiTimeBudgetBySide.red} onChange={(event) => updateAiBudget('red', event.target.value)}>
+                      {AI_TIME_BUDGET_OPTIONS.map((ms) => (
+                        <option key={ms} value={ms}>
+                          {ms / 1000}秒
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="button" onClick={() => toggleAiForSide('black')}>
+                    黑方AI：{aiEnabledBySide.black ? '开' : '关'}
+                  </button>
+                  <button type="button" onClick={() => toggleDrawOffer('black')} disabled={isReplayMode || !!game.winner || game.isDraw}>
+                    {drawOfferBySide.black ? '黑方取消提和' : '黑方提和'}
+                  </button>
+                  <div className="ai-depth" aria-label="黑方AI搜索层数">
+                    <button type="button" onClick={() => decreaseAiDepth('black')} disabled={aiDepthBySide.black <= MIN_AI_DEPTH}>
+                      -
+                    </button>
+                    <span>黑层：{aiDepthBySide.black}</span>
+                    <button type="button" onClick={() => increaseAiDepth('black')} disabled={aiDepthBySide.black >= MAX_AI_DEPTH}>
+                      +
+                    </button>
+                  </div>
+                  <label className="ai-budget" aria-label="黑方AI思考时限">
+                    <span>黑时限</span>
+                    <select value={aiTimeBudgetBySide.black} onChange={(event) => updateAiBudget('black', event.target.value)}>
+                      {AI_TIME_BUDGET_OPTIONS.map((ms) => (
+                        <option key={ms} value={ms}>
+                          {ms / 1000}秒
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
+              {isServerMode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void handleServerResign()}
+                    disabled={!activeMatch || !myServerSide || activeMatch.status !== 'ongoing'}
+                  >
+                    认输
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleServerDrawOffer()}
+                    disabled={!activeMatch || !myServerSide || activeMatch.status !== 'ongoing'}
+                  >
+                    {activeMatch && myServerSide && activeMatch.drawOfferBySide[myServerSide] ? '取消提和' : '提和'}
+                  </button>
+                  {activeMatch && activeMatch.undoRequest ? (
+                    activeMatch.undoRequest.fromSide === myServerSide ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleServerUndoAction('cancel')}
+                        disabled={!activeMatch || !myServerSide || activeMatch.status !== 'ongoing'}
+                      >
+                        取消悔棋请求
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void handleServerUndoAction('accept')}
+                          disabled={!activeMatch || !myServerSide || activeMatch.status !== 'ongoing' || !pendingUndoFromOpponent}
+                        >
+                          同意悔棋
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleServerUndoAction('reject')}
+                          disabled={!activeMatch || !myServerSide || activeMatch.status !== 'ongoing' || !pendingUndoFromOpponent}
+                        >
+                          拒绝悔棋
+                        </button>
+                      </>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void handleServerUndoAction('request')}
+                      disabled={!activeMatch || !myServerSide || activeMatch.status !== 'ongoing'}
+                    >
+                      请求悔棋
+                    </button>
+                  )}
+                  <div className="ai-depth" aria-label="服务器红方AI搜索层数">
+                    <button
+                      type="button"
+                      onClick={() => void updateServerAiDepth('red', -1)}
+                      disabled={!serverAiEnabledBySide.red || serverAiDepthBySide.red <= MIN_AI_DEPTH}
+                    >
+                      -
+                    </button>
+                    <span>红AI层：{serverAiEnabledBySide.red ? serverAiDepthBySide.red : '--'}</span>
+                    <button
+                      type="button"
+                      onClick={() => void updateServerAiDepth('red', 1)}
+                      disabled={!serverAiEnabledBySide.red || serverAiDepthBySide.red >= MAX_AI_DEPTH}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <label className="ai-budget" aria-label="服务器红方AI思考时限">
+                    <span>红AI时限</span>
+                    <select
+                      value={serverAiTimeBudgetBySide.red}
+                      onChange={(event) => {
+                        void updateServerAiBudget('red', event.target.value)
+                      }}
+                      disabled={!serverAiEnabledBySide.red}
+                    >
+                      {AI_TIME_BUDGET_OPTIONS.map((ms) => (
+                        <option key={`server-red-budget-${ms}`} value={ms}>
+                          {ms / 1000}秒
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="ai-depth" aria-label="服务器黑方AI搜索层数">
+                    <button
+                      type="button"
+                      onClick={() => void updateServerAiDepth('black', -1)}
+                      disabled={!serverAiEnabledBySide.black || serverAiDepthBySide.black <= MIN_AI_DEPTH}
+                    >
+                      -
+                    </button>
+                    <span>黑AI层：{serverAiEnabledBySide.black ? serverAiDepthBySide.black : '--'}</span>
+                    <button
+                      type="button"
+                      onClick={() => void updateServerAiDepth('black', 1)}
+                      disabled={!serverAiEnabledBySide.black || serverAiDepthBySide.black >= MAX_AI_DEPTH}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <label className="ai-budget" aria-label="服务器黑方AI思考时限">
+                    <span>黑AI时限</span>
+                    <select
+                      value={serverAiTimeBudgetBySide.black}
+                      onChange={(event) => {
+                        void updateServerAiBudget('black', event.target.value)
+                      }}
+                      disabled={!serverAiEnabledBySide.black}
+                    >
+                      {AI_TIME_BUDGET_OPTIONS.map((ms) => (
+                        <option key={`server-black-budget-${ms}`} value={ms}>
+                          {ms / 1000}秒
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
+              <button type="button" onClick={isServerMode ? toggleBoardSide : swapLocalSides} disabled={isServerMode}>
+                {isServerMode ? `我方在下（${myServerSide === 'black' ? '黑方' : '红方'}）` : '交换棋盘'}
+              </button>
+              {!isServerMode && (
+                <>
+                  <button type="button" onClick={undoMove} disabled={timeline.length <= 1 || isReplayMode}>
+                    悔棋
+                  </button>
+                  <button type="button" onClick={toggleReplay} disabled={timeline.length <= 1}>
+                    {isReplayMode ? '退出复盘' : '进入复盘'}
+                  </button>
+                  <button type="button" onClick={restart}>
+                    重新开局
+                  </button>
+                </>
+              )}
+              <button type="button" onClick={exportPgn} disabled={isServerMode ? !activeMatch : false}>
+                导出PGN
+              </button>
+              {!isServerMode && (
+                <>
+                  <button type="button" onClick={() => pgnInputRef.current?.click()}>
+                    导入PGN
+                  </button>
+                  <input ref={pgnInputRef} type="file" accept=".pgn,text/plain" style={{ display: 'none' }} onChange={importPgn} />
+                </>
+              )}
+            </div>}
+          </header>
 
-      {isReplayMode && (
-        <section className="replay-bar">
-          <button type="button" onClick={replayPrev} disabled={replayIndex <= 0}>
-            上一步
-          </button>
-          <span>
-            复盘 {replayIndex} / {Math.max(0, timeline.length - 1)}
-          </span>
-          <button type="button" onClick={replayNext} disabled={replayIndex >= timeline.length - 1}>
-            下一步
-          </button>
+          {!isRankingView && (
+            <>
+              <section className="status">
+                <div className="server-row">
+                  <div>
+                    {displayedGame.message}
+                    {!isServerMode && aiThinkingSide ? `（${sideText(aiThinkingSide)}AI思考中）` : ''}
+                    {` ｜ ${statusSummaryText}`}
+                  </div>
+                  <div>步数：{displayedGame.moveCount}</div>
+                  <div>
+                    {isServerMode
+                      ? `在线：${activeMatch ? `${activeMatch.mode} · ${activeMatch.status} · ${isMyServerTurn ? '轮到你走' : '等待对手/AI'}` : '未选择对局'}`
+                      : `提和：红方${drawOfferBySide.red ? '已提' : '未提'} / 黑方${drawOfferBySide.black ? '已提' : '未提'}`}
+                  </div>
+                </div>
+              </section>
+
+              <details className="insights-panel">
+                <summary>对局信息</summary>
+                <section className="insights">
+                  {isServerMode ? (
+                    <>
+                      <div className="think-row">
+                        <span>红方思考：{formatThinkMs(liveThinkBySide.red)}</span>
+                        <span>黑方思考：{formatThinkMs(liveThinkBySide.black)}</span>
+                      </div>
+                      <div className="think-row total">
+                        <span>红方总时长：{formatDurationMs(liveThinkTotals.red)}</span>
+                        <span>黑方总时长：{formatDurationMs(liveThinkTotals.black)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="think-row">
+                        <span>红方思考：{formatThinkMs(liveThinkBySide.red)}</span>
+                        <span>黑方思考：{formatThinkMs(liveThinkBySide.black)}</span>
+                      </div>
+                      <div className="think-row total">
+                        <span>红方总时长：{formatDurationMs(liveThinkTotals.red)}</span>
+                        <span>黑方总时长：{formatDurationMs(liveThinkTotals.black)}</span>
+                      </div>
+                      <div className="last-row">
+                        对手上一步：
+                        {opponentLastMove
+                          ? `${sideText(opponentLastMove.side)} ${opponentLastMove.pieceText} ${posText(opponentLastMove.from)}→${posText(opponentLastMove.to)}（${actorText(opponentLastMove.actor)} ${formatDurationMs(opponentLastMove.thinkMs)}）`
+                          : '暂无'}
+                      </div>
+                    </>
+                  )}
+                  {recentMoves.length > 0 && (
+                    <div className="move-list">
+                      {recentMoves.map((log) => (
+                        <div key={`${log.id}-${log.side}-${log.from.row}-${log.from.col}`}>
+                          {log.id}. {sideText(log.side)} {log.pieceText} {posText(log.from)}→{posText(log.to)} · {actorText(log.actor)}
+                          {!isServerMode ? ` · ${formatDurationMs(log.thinkMs)}` : ''}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </details>
+
+              {!isServerMode && isReplayMode && (
+                <section className="replay-bar">
+                  <button type="button" onClick={replayPrev} disabled={replayIndex <= 0}>
+                    上一步
+                  </button>
+                  <span>
+                    复盘 {replayIndex} / {Math.max(0, timeline.length - 1)}
+                  </span>
+                  <button type="button" onClick={replayNext} disabled={replayIndex >= timeline.length - 1}>
+                    下一步
+                  </button>
+                </section>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {actionsCollapsed && (
+        <button type="button" className="expand-floating" onClick={() => setActionsCollapsed(false)}>
+          展开操作
+        </button>
+      )}
+
+      {actionsCollapsed && (
+        <section className="collapsed-status">
+          <div>
+            {displayedGame.message}
+            {!isServerMode && aiThinkingSide ? `（${sideText(aiThinkingSide)}AI思考中）` : ''}
+            {` ｜ ${statusSummaryText}`}
+          </div>
+          <div>红方思考：{formatThinkMs(liveThinkBySide.red)} · 黑方思考：{formatThinkMs(liveThinkBySide.black)}</div>
+          <div>红方总时长：{formatDurationMs(liveThinkTotals.red)} · 黑方总时长：{formatDurationMs(liveThinkTotals.black)}</div>
+          {isServerMode && <div>{activeMatch ? `在线：${activeMatch.mode} · ${activeMatch.status} · ${isMyServerTurn ? '轮到你走' : '等待对手/AI'}` : '在线：未选择对局'}</div>}
         </section>
       )}
 
-      <main className="board-wrap">
-        <div className={`board ${boardFlipped ? 'flipped' : ''}`} role="grid" aria-label="揭棋棋盘" ref={boardRef}>
+      {!isRankingView && (
+        <main className="board-wrap">
+          <div className={`board ${effectiveBoardFlipped ? 'flipped' : ''}`} role="grid" aria-label="揭棋棋盘" ref={boardRef}>
           {lastMoveLine && (
             <svg className="move-trail" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
               <defs>
@@ -853,7 +1999,9 @@ function App() {
                     isReplayMode ||
                     displayedGame.isDraw ||
                     !!displayedGame.winner ||
-                    aiEnabledBySide[displayedGame.turn]
+                    (isServerMode
+                      ? !activeMatch || activeMatch.status !== 'ongoing'
+                      : aiEnabledBySide[displayedGame.turn])
                   }
                   onClick={() => handleCellClick(r, c)}
                 >
@@ -868,12 +2016,15 @@ function App() {
               )
             }),
           )}
-        </div>
-      </main>
+          </div>
+        </main>
+      )}
 
-      <section className="tips">
-        <p>规则：暗子首次按所在初始位规则走，走后翻为明子；象士可过河。支持悔棋、复盘、交换棋盘与双 AI 对战（双方层数/思考时限独立可调）。</p>
-      </section>
+      {!isRankingView && (
+        <section className="tips">
+          <p>规则：暗子首次按所在初始位规则走，走后翻为明子；象士可过河。支持本地模式与服务器模式（账号、在线对局、AI 对战、排行统计）。</p>
+        </section>
+      )}
     </div>
   )
 }
