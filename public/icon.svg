@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="96" fill="#F2E7D0"/>
+  <rect x="48" y="48" width="416" height="416" rx="40" fill="#7B4A2F"/>
+  <circle cx="256" cy="256" r="130" fill="#FFF8EF" stroke="#B42318" stroke-width="22"/>
+  <text x="256" y="290" text-anchor="middle" font-size="140" font-family="PingFang SC, Microsoft YaHei, sans-serif" fill="#B42318">揭</text>
+</svg>
