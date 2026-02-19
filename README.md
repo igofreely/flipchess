@@ -88,29 +88,34 @@ npm run test:local
 
 ---
 
-## 服务器部署（Debian 12，完整命令）
+## 服务器部署（Debian 12：发布 + 443 证书 + 自动续签）
 
-以下示例从**本地电脑**执行，把项目打包上传到服务器后自动部署。
+以下流程是“完整上线命令”，包含：发版、HTTPS（443）与续签。
 
-### 1) 本地打包
+### 0) 前置条件
+
+- 域名已解析到服务器公网 IP（例如 `ds.hookapp.top`）
+- 服务器已放行端口：`80`、`443`、`33333`
+
+### 1) 本地打包并上传
 
 ```bash
 cd /path/to/FlipChess
-tar --exclude='node_modules' --exclude='.git' --exclude='dist' --exclude='.DS_Store' -czf /tmp/flipchess-deploy.tar.gz .
-```
 
-### 2) 上传到服务器
+tar --exclude='node_modules' --exclude='.git' --exclude='dist' --exclude='.DS_Store' \
+	-czf /tmp/flipchess-deploy.tar.gz .
 
-```bash
 scp /tmp/flipchess-deploy.tar.gz root@YOUR_SERVER_IP:/root/flipchess-deploy.tar.gz
 scp scripts/deploy-debian12.sh root@YOUR_SERVER_IP:/root/deploy-debian12.sh
 scp scripts/enable-https-debian12.sh root@YOUR_SERVER_IP:/root/enable-https-debian12.sh
+scp scripts/flipchess.nginx.conf root@YOUR_SERVER_IP:/root/flipchess.nginx.conf
 ```
 
-### 3) 服务器执行基础部署
+### 2) 服务器执行发布（HTTP + PM2 + MySQL）
 
 ```bash
 ssh root@YOUR_SERVER_IP
+
 chmod +x /root/deploy-debian12.sh /root/enable-https-debian12.sh
 
 # 可按需覆盖应用数据库账号密码
@@ -121,26 +126,36 @@ export MYSQL_APP_DB=flipchess
 bash /root/deploy-debian12.sh
 ```
 
-部署完成后默认：
-
-- 前端：`http://YOUR_SERVER_IP:33333`
-- 后端健康检查：`http://127.0.0.1:3001/api/health`（在服务器内执行）
-
-### 4) 配置 HTTPS（域名需先解析到服务器）
+### 3) 安装/更新 443 证书
 
 ```bash
 export DOMAIN=your.domain.com
 bash /root/enable-https-debian12.sh
 ```
 
-验证：
+### 4) 覆盖为三端口统一 Nginx（80/443/33333）
+
+> 说明：发布脚本会写入 33333-only 配置，因此每次发布后建议执行一次这步，确保 HTTPS 一直存在。
 
 ```bash
-curl -I https://your.domain.com
+cp /root/flipchess.nginx.conf /etc/nginx/sites-available/flipchess.conf
+ln -sf /etc/nginx/sites-available/flipchess.conf /etc/nginx/sites-enabled/flipchess.conf
+rm -f /etc/nginx/sites-enabled/default
+nginx -t
+systemctl restart nginx
+```
+
+### 5) 线上健康检查（HTTP + HTTPS）
+
+```bash
+curl -I -sS http://your.domain.com:33333 | head -n 1
+curl -sS http://your.domain.com:33333/api/health
+
+curl -I -sS https://your.domain.com | head -n 1
 curl -sS https://your.domain.com/api/health
 ```
 
-### 5) PM2 常用运维命令
+### 6) PM2 常用运维命令
 
 ```bash
 pm2 list
@@ -153,7 +168,37 @@ pm2 save
 
 ## 证书自动续期与失败告警（可选）
 
-如果你已经按线上方式创建了 `/usr/local/bin/flipchess-cert-renew`，可以用以下方式配置失败告警邮箱：
+### 1) 续签任务（cron）
+
+```bash
+cat >/usr/local/bin/flipchess-cert-renew <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+LOG_DIR="/var/log/flipchess"
+LOG_FILE="$LOG_DIR/cert-renew.log"
+mkdir -p "$LOG_DIR"
+{
+	echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) cert renew start ====="
+	/root/.acme.sh/acme.sh --cron --home /root/.acme.sh
+	echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) cert renew end ====="
+} >>"$LOG_FILE" 2>&1
+EOF
+
+chmod 755 /usr/local/bin/flipchess-cert-renew
+
+cat >/etc/cron.d/flipchess-cert-renew <<'EOF'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+26 20 * * * root /usr/local/bin/flipchess-cert-renew
+EOF
+
+chmod 644 /etc/cron.d/flipchess-cert-renew
+```
+
+### 2) 续签失败告警邮箱配置
+
+如果你已使用增强版 `/usr/local/bin/flipchess-cert-renew`（支持失败发信），可用以下配置：
 
 ```bash
 mkdir -p /etc/flipchess
@@ -175,6 +220,13 @@ chmod 600 /etc/flipchess/cert-alert.env
 ```bash
 /usr/local/bin/flipchess-cert-renew --simulate-fail
 tail -n 50 /var/log/flipchess/cert-renew.log
+```
+
+### 3) 续签状态检查
+
+```bash
+grep -E 'Le_NextRenewTime(Str)?=' /root/.acme.sh/your.domain.com_ecc/your.domain.com.conf
+tail -n 100 /var/log/flipchess/cert-renew.log
 ```
 
 ---
