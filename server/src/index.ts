@@ -6,7 +6,7 @@ import { createInitialGame, getPieceLabel, playMove } from '../../src/game/engin
 import { chooseBestAiMoveTimed } from '../../src/game/ai'
 import type { Position, Side } from '../../src/game/types'
 import { createAuthToken, requireAuth, type AuthenticatedRequest } from './auth'
-import { DataStore } from './store'
+import { DataStore } from './store.ts'
 import type { MatchMode, MatchRecord, MatchSideSlot, MoveRecord, PublicUser, UserRecord } from './types'
 
 const app = express()
@@ -74,6 +74,8 @@ const parsePosition = (value: unknown): Position | null => {
   if (row < 0 || row > 9 || col < 0 || col > 8) return null
   return { row, col }
 }
+
+const normalizeParam = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)
 
 const isGameStateLike = (value: unknown): value is ReturnType<typeof createInitialGame> => {
   if (!value || typeof value !== 'object') return false
@@ -440,7 +442,12 @@ app.get('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => {
 })
 
 app.get('/api/matches/:matchId', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const match = await store.findMatchById(req.params.matchId)
+  const matchId = normalizeParam(req.params.matchId)
+  if (!matchId) {
+    res.status(400).json({ message: 'Invalid matchId' })
+    return
+  }
+  const match = await store.findMatchById(matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -450,7 +457,12 @@ app.get('/api/matches/:matchId', requireAuth, async (req: AuthenticatedRequest, 
 })
 
 app.patch('/api/matches/:matchId/ai-config', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const match = await store.findMatchById(req.params.matchId)
+  const matchId = normalizeParam(req.params.matchId)
+  if (!matchId) {
+    res.status(400).json({ message: 'Invalid matchId' })
+    return
+  }
+  const match = await store.findMatchById(matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -499,7 +511,12 @@ app.patch('/api/matches/:matchId/ai-config', requireAuth, async (req: Authentica
 })
 
 app.delete('/api/matches/:matchId', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const match = await store.findMatchById(req.params.matchId)
+  const matchId = normalizeParam(req.params.matchId)
+  if (!matchId) {
+    res.status(400).json({ message: 'Invalid matchId' })
+    return
+  }
+  const match = await store.findMatchById(matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -525,7 +542,12 @@ app.delete('/api/matches/:matchId', requireAuth, async (req: AuthenticatedReques
 })
 
 app.post('/api/matches/:matchId/move', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const match = await store.findMatchById(req.params.matchId)
+  const matchId = normalizeParam(req.params.matchId)
+  if (!matchId) {
+    res.status(400).json({ message: 'Invalid matchId' })
+    return
+  }
+  const match = await store.findMatchById(matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -572,7 +594,12 @@ app.post('/api/matches/:matchId/move', requireAuth, async (req: AuthenticatedReq
 })
 
 app.post('/api/matches/:matchId/draw-offer', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const match = await store.findMatchById(req.params.matchId)
+  const matchId = normalizeParam(req.params.matchId)
+  if (!matchId) {
+    res.status(400).json({ message: 'Invalid matchId' })
+    return
+  }
+  const match = await store.findMatchById(matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -630,7 +657,12 @@ app.post('/api/matches/:matchId/draw-offer', requireAuth, async (req: Authentica
 })
 
 app.post('/api/matches/:matchId/resign', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const match = await store.findMatchById(req.params.matchId)
+  const matchId = normalizeParam(req.params.matchId)
+  if (!matchId) {
+    res.status(400).json({ message: 'Invalid matchId' })
+    return
+  }
+  const match = await store.findMatchById(matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -671,7 +703,12 @@ app.post('/api/matches/:matchId/resign', requireAuth, async (req: AuthenticatedR
 })
 
 app.post('/api/matches/:matchId/undo-request', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const match = await store.findMatchById(req.params.matchId)
+  const matchId = normalizeParam(req.params.matchId)
+  if (!matchId) {
+    res.status(400).json({ message: 'Invalid matchId' })
+    return
+  }
+  const match = await store.findMatchById(matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
