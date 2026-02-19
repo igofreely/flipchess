@@ -46,9 +46,11 @@ const toPublicUser = (user: UserRecord): PublicUser => ({
 const matchIncludesUser = (match: MatchRecord, userId: string) =>
   match.red.userId === userId || match.black.userId === userId || match.createdByUserId === userId
 
-const normalizeMatchForResponse = (match: MatchRecord) => {
-  const redUser = match.red.userId ? store.findUserById(match.red.userId) : undefined
-  const blackUser = match.black.userId ? store.findUserById(match.black.userId) : undefined
+const normalizeMatchForResponse = async (match: MatchRecord) => {
+  const [redUser, blackUser] = await Promise.all([
+    match.red.userId ? store.findUserById(match.red.userId) : Promise.resolve(undefined),
+    match.black.userId ? store.findUserById(match.black.userId) : Promise.resolve(undefined),
+  ])
 
   return {
     ...match,
@@ -158,10 +160,10 @@ const scheduleAiTurnIfNeeded = (matchId: string, delayMs = MIN_AI_MOVE_INTERVAL_
   if (aiTurnTimers.has(matchId)) return
 
   const safeDelay = Math.max(MIN_AI_MOVE_INTERVAL_MS, Math.floor(delayMs))
-  const timer = setTimeout(() => {
+  const timer = setTimeout(async () => {
     aiTurnTimers.delete(matchId)
 
-    const match = store.findMatchById(matchId)
+    const match = await store.findMatchById(matchId)
     if (!match || match.status !== 'ongoing') return
 
     const side = match.state.turn
@@ -185,14 +187,14 @@ const scheduleAiTurnIfNeeded = (matchId: string, delayMs = MIN_AI_MOVE_INTERVAL_
       }
       clearNegotiationState(match)
       match.updatedAt = new Date().toISOString()
-      store.upsertMatch(match)
+      await store.upsertMatch(match)
       return
     }
 
     if (!move) {
       finalizeMatchStatus(match)
       match.updatedAt = new Date().toISOString()
-      store.upsertMatch(match)
+      await store.upsertMatch(match)
       return
     }
 
@@ -201,7 +203,7 @@ const scheduleAiTurnIfNeeded = (matchId: string, delayMs = MIN_AI_MOVE_INTERVAL_
     if (next === before) {
       finalizeMatchStatus(match)
       match.updatedAt = new Date().toISOString()
-      store.upsertMatch(match)
+      await store.upsertMatch(match)
       return
     }
 
@@ -209,7 +211,7 @@ const scheduleAiTurnIfNeeded = (matchId: string, delayMs = MIN_AI_MOVE_INTERVAL_
     match.updatedAt = new Date().toISOString()
     appendMoveLog(match, side, move.from, move.to, 'ai')
     finalizeMatchStatus(match)
-    store.upsertMatch(match)
+    await store.upsertMatch(match)
 
     if (match.status === 'ongoing' && currentSideSlot(match).type === 'ai') {
       scheduleAiTurnIfNeeded(match.id, MIN_AI_MOVE_INTERVAL_MS)
@@ -235,7 +237,7 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(400).json({ message: 'Password length must be 6-64' })
     return
   }
-  if (store.findUserByUsername(username)) {
+  if (await store.findUserByUsername(username)) {
     res.status(409).json({ message: 'Username already exists' })
     return
   }
@@ -247,7 +249,7 @@ app.post('/api/auth/register', async (req, res) => {
     passwordHash,
     createdAt: new Date().toISOString(),
   }
-  store.addUser(user)
+  await store.addUser(user)
 
   const token = createAuthToken({ userId: user.id, username: user.username })
   res.status(201).json({ token, user: toPublicUser(user) })
@@ -257,7 +259,7 @@ app.post('/api/auth/login', async (req, res) => {
   const username = String(req.body?.username ?? '').trim()
   const password = String(req.body?.password ?? '')
 
-  const user = store.findUserByUsername(username)
+  const user = await store.findUserByUsername(username)
   if (!user) {
     res.status(401).json({ message: 'Invalid credentials' })
     return
@@ -273,8 +275,8 @@ app.post('/api/auth/login', async (req, res) => {
   res.json({ token, user: toPublicUser(user) })
 })
 
-app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res) => {
-  const current = req.user ? store.findUserById(req.user.userId) : undefined
+app.get('/api/auth/me', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const current = req.user ? await store.findUserById(req.user.userId) : undefined
   if (!current) {
     res.status(401).json({ message: 'User not found' })
     return
@@ -283,8 +285,8 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res) => {
   res.json({ user: toPublicUser(current) })
 })
 
-app.post('/api/matches', requireAuth, (req: AuthenticatedRequest, res) => {
-  const creator = req.user ? store.findUserById(req.user.userId) : undefined
+app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const creator = req.user ? await store.findUserById(req.user.userId) : undefined
   if (!creator) {
     res.status(401).json({ message: 'User not found' })
     return
@@ -339,7 +341,7 @@ app.post('/api/matches', requireAuth, (req: AuthenticatedRequest, res) => {
 
   if (mode === 'pvp') {
     const opponentUsername = String(req.body?.opponentUsername ?? '').trim()
-    const opponent = store.findUserByUsername(opponentUsername)
+    const opponent = await store.findUserByUsername(opponentUsername)
     if (!opponent) {
       res.status(400).json({ message: 'Opponent username not found' })
       return
@@ -420,34 +422,35 @@ app.post('/api/matches', requireAuth, (req: AuthenticatedRequest, res) => {
     finalizeMatchStatus(newMatch)
   }
 
-  store.upsertMatch(newMatch)
+  await store.upsertMatch(newMatch)
   if (newMatch.status === 'ongoing' && currentSideSlot(newMatch).type === 'ai') {
     scheduleAiTurnIfNeeded(newMatch.id, MIN_AI_MOVE_INTERVAL_MS)
   }
-  res.status(201).json({ match: normalizeMatchForResponse(newMatch) })
+  res.status(201).json({ match: await normalizeMatchForResponse(newMatch) })
 })
 
-app.get('/api/matches', requireAuth, (req: AuthenticatedRequest, res) => {
+app.get('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => {
   const mineOnly = String(req.query.mine ?? 'true') !== 'false'
   const userId = req.user?.userId
 
-  const all = store.listMatches()
+  const all = await store.listMatches()
   const result = mineOnly && userId ? all.filter((match) => matchIncludesUser(match, userId)) : all
-  res.json({ matches: result.map(normalizeMatchForResponse) })
+  const normalized = await Promise.all(result.map((match) => normalizeMatchForResponse(match)))
+  res.json({ matches: normalized })
 })
 
-app.get('/api/matches/:matchId', requireAuth, (req: AuthenticatedRequest, res) => {
-  const match = store.findMatchById(req.params.matchId)
+app.get('/api/matches/:matchId', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const match = await store.findMatchById(req.params.matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
   }
 
-  res.json({ match: normalizeMatchForResponse(match) })
+  res.json({ match: await normalizeMatchForResponse(match) })
 })
 
-app.patch('/api/matches/:matchId/ai-config', requireAuth, (req: AuthenticatedRequest, res) => {
-  const match = store.findMatchById(req.params.matchId)
+app.patch('/api/matches/:matchId/ai-config', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const match = await store.findMatchById(req.params.matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -485,18 +488,18 @@ app.patch('/api/matches/:matchId/ai-config', requireAuth, (req: AuthenticatedReq
   }
 
   match.updatedAt = new Date().toISOString()
-  store.upsertMatch(match)
+  await store.upsertMatch(match)
 
   if (match.status === 'ongoing' && currentSideSlot(match).type === 'ai') {
     clearAiTurnTimer(match.id)
     scheduleAiTurnIfNeeded(match.id, MIN_AI_MOVE_INTERVAL_MS)
   }
 
-  res.json({ match: normalizeMatchForResponse(match) })
+  res.json({ match: await normalizeMatchForResponse(match) })
 })
 
-app.delete('/api/matches/:matchId', requireAuth, (req: AuthenticatedRequest, res) => {
-  const match = store.findMatchById(req.params.matchId)
+app.delete('/api/matches/:matchId', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const match = await store.findMatchById(req.params.matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -510,7 +513,7 @@ app.delete('/api/matches/:matchId', requireAuth, (req: AuthenticatedRequest, res
     return
   }
 
-  const removed = store.removeMatch(match.id)
+  const removed = await store.removeMatch(match.id)
   if (!removed) {
     res.status(500).json({ message: 'Delete match failed' })
     return
@@ -521,8 +524,8 @@ app.delete('/api/matches/:matchId', requireAuth, (req: AuthenticatedRequest, res
   res.json({ ok: true, matchId: match.id })
 })
 
-app.post('/api/matches/:matchId/move', requireAuth, (req: AuthenticatedRequest, res) => {
-  const match = store.findMatchById(req.params.matchId)
+app.post('/api/matches/:matchId/move', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const match = await store.findMatchById(req.params.matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -561,15 +564,15 @@ app.post('/api/matches/:matchId/move', requireAuth, (req: AuthenticatedRequest, 
   match.updatedAt = new Date().toISOString()
   appendMoveLog(match, side, from, to, 'user')
   finalizeMatchStatus(match)
-  store.upsertMatch(match)
+  await store.upsertMatch(match)
   if (match.status === 'ongoing' && currentSideSlot(match).type === 'ai') {
     scheduleAiTurnIfNeeded(match.id, MIN_AI_MOVE_INTERVAL_MS)
   }
-  res.json({ match: normalizeMatchForResponse(match) })
+  res.json({ match: await normalizeMatchForResponse(match) })
 })
 
-app.post('/api/matches/:matchId/draw-offer', requireAuth, (req: AuthenticatedRequest, res) => {
-  const match = store.findMatchById(req.params.matchId)
+app.post('/api/matches/:matchId/draw-offer', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const match = await store.findMatchById(req.params.matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -596,8 +599,8 @@ app.post('/api/matches/:matchId/draw-offer', requireAuth, (req: AuthenticatedReq
     match.drawOfferBySide[side] = false
     match.updatedAt = new Date().toISOString()
     clearAiTurnTimer(match.id)
-    store.upsertMatch(match)
-    res.json({ match: normalizeMatchForResponse(match) })
+    await store.upsertMatch(match)
+    res.json({ match: await normalizeMatchForResponse(match) })
     return
   }
 
@@ -615,19 +618,19 @@ app.post('/api/matches/:matchId/draw-offer', requireAuth, (req: AuthenticatedReq
     }
     clearNegotiationState(match)
     match.updatedAt = new Date().toISOString()
-    store.upsertMatch(match)
-    res.json({ match: normalizeMatchForResponse(match) })
+    await store.upsertMatch(match)
+    res.json({ match: await normalizeMatchForResponse(match) })
     return
   }
 
   match.drawOfferBySide[side] = true
   match.updatedAt = new Date().toISOString()
-  store.upsertMatch(match)
-  res.json({ match: normalizeMatchForResponse(match) })
+  await store.upsertMatch(match)
+  res.json({ match: await normalizeMatchForResponse(match) })
 })
 
-app.post('/api/matches/:matchId/resign', requireAuth, (req: AuthenticatedRequest, res) => {
-  const match = store.findMatchById(req.params.matchId)
+app.post('/api/matches/:matchId/resign', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const match = await store.findMatchById(req.params.matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -663,12 +666,12 @@ app.post('/api/matches/:matchId/resign', requireAuth, (req: AuthenticatedRequest
   clearNegotiationState(match)
   match.updatedAt = new Date().toISOString()
   clearAiTurnTimer(match.id)
-  store.upsertMatch(match)
-  res.json({ match: normalizeMatchForResponse(match) })
+  await store.upsertMatch(match)
+  res.json({ match: await normalizeMatchForResponse(match) })
 })
 
-app.post('/api/matches/:matchId/undo-request', requireAuth, (req: AuthenticatedRequest, res) => {
-  const match = store.findMatchById(req.params.matchId)
+app.post('/api/matches/:matchId/undo-request', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const match = await store.findMatchById(req.params.matchId)
   if (!match) {
     res.status(404).json({ message: 'Match not found' })
     return
@@ -701,8 +704,8 @@ app.post('/api/matches/:matchId/undo-request', requireAuth, (req: AuthenticatedR
     }
     match.undoRequest = { fromSide: side, requestedAt: new Date().toISOString() }
     match.updatedAt = new Date().toISOString()
-    store.upsertMatch(match)
-    res.json({ match: normalizeMatchForResponse(match) })
+    await store.upsertMatch(match)
+    res.json({ match: await normalizeMatchForResponse(match) })
     return
   }
 
@@ -713,16 +716,16 @@ app.post('/api/matches/:matchId/undo-request', requireAuth, (req: AuthenticatedR
     }
     match.undoRequest = null
     match.updatedAt = new Date().toISOString()
-    store.upsertMatch(match)
-    res.json({ match: normalizeMatchForResponse(match) })
+    await store.upsertMatch(match)
+    res.json({ match: await normalizeMatchForResponse(match) })
     return
   }
 
   if (action === 'reject') {
     match.undoRequest = null
     match.updatedAt = new Date().toISOString()
-    store.upsertMatch(match)
-    res.json({ match: normalizeMatchForResponse(match) })
+    await store.upsertMatch(match)
+    res.json({ match: await normalizeMatchForResponse(match) })
     return
   }
 
@@ -738,15 +741,15 @@ app.post('/api/matches/:matchId/undo-request', requireAuth, (req: AuthenticatedR
   match.termination = null
   clearNegotiationState(match)
   match.updatedAt = new Date().toISOString()
-  store.upsertMatch(match)
+  await store.upsertMatch(match)
   if (match.status === 'ongoing' && currentSideSlot(match).type === 'ai') {
     scheduleAiTurnIfNeeded(match.id, MIN_AI_MOVE_INTERVAL_MS)
   }
-  res.json({ match: normalizeMatchForResponse(match) })
+  res.json({ match: await normalizeMatchForResponse(match) })
 })
 
-app.get('/api/stats/overview', (_req, res) => {
-  const matches = store.listMatches()
+app.get('/api/stats/overview', async (_req, res) => {
+  const matches = await store.listMatches()
   const finished = matches.filter((item) => item.status === 'finished')
 
   const overview = {
@@ -762,10 +765,10 @@ app.get('/api/stats/overview', (_req, res) => {
   res.json({ overview })
 })
 
-app.get('/api/rankings', (_req, res) => {
-  const users = store.listUsers()
-  const finished = store
-    .listMatches()
+app.get('/api/rankings', async (_req, res) => {
+  const [users, matches] = await Promise.all([store.listUsers(), store.listMatches()])
+  const userById = new Map(users.map((user) => [user.id, user]))
+  const finished = matches
     .filter((item) => item.status === 'finished')
     .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
   const stats = new Map<
@@ -800,7 +803,7 @@ app.get('/api/rankings', (_req, res) => {
   const ensure = (userId: string) => {
     const existing = stats.get(userId)
     if (existing) return existing
-    const user = store.findUserById(userId)
+    const user = userById.get(userId)
     const createdAt = user?.createdAt ?? new Date(0).toISOString()
     const created = {
       userId,
@@ -879,6 +882,14 @@ app.get('/api/rankings', (_req, res) => {
   res.json({ ranking })
 })
 
-app.listen(PORT, () => {
-  console.log(`FlipChess server listening at http://localhost:${PORT}`)
+const startServer = async () => {
+  await store.init()
+  app.listen(PORT, () => {
+    console.log(`FlipChess server listening at http://localhost:${PORT}`)
+  })
+}
+
+void startServer().catch((error) => {
+  console.error('Failed to start FlipChess server:', error)
+  process.exit(1)
 })

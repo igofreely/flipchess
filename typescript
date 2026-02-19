@@ -1,0 +1,141 @@
+Script started on Fri Feb 20 01:42:23 2026
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  echo OK && pwd[?2004l
+OK
+/Users/w/WorkSpace/gitlab/Code/game/FlipChess
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  cat > /tmp/flipchess-cert-renew <<'SCRIP [KTT'[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h##!/usr/bin/env bash[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset -euo pipefail[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hLLOG_DIR="/var/log/flipchess"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hLLOG_FILE="$LOG_DIR/cert-renew.log"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hmmkdir -p "$LOG_DIR"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h{[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) cert  [Krrenew start ====="[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   /root/.acme.sh/acme.sh --cron --home /root/.acme [K..sh[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) cert  [Krrenew end ====="[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h}} >>"$LOG_FILE" 2>&1[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hSSCRIPT[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  cat > /tmp/flipchess-cert-renew.cron <<' [KCCRON'[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hSSHELL=/bin/bash[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hPPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr [K//bin:/sbin:/bin[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hMMAILTO=""[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h226 20 * * * root /usr/local/bin/flipchess-cert-ren [Keew[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hCCRON[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  expect <<'EOF'[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset timeout 120[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset password "hook499A"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsspawn scp -o StrictHostKeyChecking=no /tmp/flipche [Ksss-cert-renew root@ds.hookapp.top:/usr/local/bin/flipchess- [Kccert-renew[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004heexpect {[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   "*assword:*" { send "$password\r"; exp_continue  [K}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   eof[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hEEOF[?2004l
+spawn scp -o StrictHostKeyChecking=no /tmp/flipchess-cert-renew root@ds.hookapp.top:/usr/local/bin/flipchess-cert-renew
+root@ds.hookapp.top's password: 
+flipchess-cert-renew       0%    0     0.0KB/s   --:-- ETAflipchess-cert-renew     100%  335    15.3KB/s   00:00    
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  expect <<'EOF'[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset timeout 120[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset password "hook499A"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsspawn scp -o StrictHostKeyChecking=no /tmp/flipche [Ksss-cert-renew.cron root@ds.hookapp.top:/etc/cron.d/flipches [Kss-cert-renew[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004heexpect {[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   "*assword:*" { send "$password\r"; exp_continue  [K}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   eof[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hEEOF[?2004l
+spawn scp -o StrictHostKeyChecking=no /tmp/flipchess-cert-renew.cron root@ds.hookapp.top:/etc/cron.d/flipchess-cert-renew
+root@ds.hookapp.top's password: 
+flipchess-cert-renew.cro   0%    0     0.0KB/s   --:-- ETAflipchess-cert-renew.cro 100%  145     7.7KB/s   00:00    
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  expect <<'EOF'[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset timeout 240[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset password "hook499A"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsspawn ssh -o StrictHostKeyChecking=no root@ds.hook [Kaapp.top "chmod 755 /usr/local/bin/flipchess-cert-renew && c [Khhmod 644 /etc/cron.d/flipchess-cert-renew && mkdir -p /var/ [Kllog/flipchess && (crontab -l | grep -v 'acme.sh --cron --ho [Kmme /root/.acme.sh' | crontab - || true) && /usr/local/bin/f [Kllipchess-cert-renew && echo '---cron.d---' && cat /etc/cron [K..d/flipchess-cert-renew && echo '---root crontab---' && (cr [Koontab -l || true) && echo '---log tail---' && tail -n 40 /v [Kaar/log/flipchess/cert-renew.log && echo '---next renew---'  [K&&& grep -E 'Le_NextRenewTime(Str)?=' /root/.acme.sh/ds.hook [Kaapp.top_ecc/ds.hookapp.top.conf"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004heexpect {[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   "*assword:*" { send "$password\r"; exp_continue  [K}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   eof[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hEEOF[?2004l
+spawn ssh -o StrictHostKeyChecking=no root@ds.hookapp.top chmod 755 /usr/local/bin/flipchess-cert-renew && chmod 644 /etc/cron.d/flipchess-cert-renew && mkdir -p /var/log/flipchess && (crontab -l | grep -v 'acme.sh --cron --home /root/.acme.sh' | crontab - || true) && /usr/local/bin/flipchess-cert-renew && echo '---cron.d---' && cat /etc/cron.d/flipchess-cert-renew && echo '---root crontab---' && (crontab -l || true) && echo '---log tail---' && tail -n 40 /var/log/flipchess/cert-renew.log && echo '---next renew---' && grep -E 'Le_NextRenewTime(Str)?=' /root/.acme.sh/ds.hookapp.top_ecc/ds.hookapp.top.conf
+root@ds.hookapp.top's password: 
+---cron.d---
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+26 20 * * * root /usr/local/bin/flipchess-cert-renew
+---root crontab---
+*/5 * * * * flock -xn /tmp/stargate.lock -c '/usr/local/qcloud/stargate/admin/start.sh > /dev/null 2>&1 &'
+26 20 * * * "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" > /dev/null
+---log tail---
+===== 2026-02-19T17:45:09Z cert renew start =====
+[Fri Feb 20 01:45:09 AM CST 2026] ===Starting cron===
+[Fri Feb 20 01:45:09 AM CST 2026] Renewing: 'ds.hookapp.top'
+[Fri Feb 20 01:45:09 AM CST 2026] Renewing using Le_API=https://acme-v02.api.letsencrypt.org/directory
+[Fri Feb 20 01:45:09 AM CST 2026] Skipping. Next renewal time is: 2026-03-20T17:35:17Z
+[Fri Feb 20 01:45:09 AM CST 2026] Add '--force' to force renewal.
+[Fri Feb 20 01:45:09 AM CST 2026] Skipped ds.hookapp.top_ecc
+[Fri Feb 20 01:45:09 AM CST 2026] ===End cron===
+===== 2026-02-19T17:45:09Z cert renew end =====
+---next renew---
+Le_NextRenewTimeStr='2026-03-20T17:35:17Z'
+Le_NextRenewTime='1774028117'
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  expect <<'EOF'[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset timeout 120[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset password "hook499A"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsspawn ssh -o StrictHostKeyChecking=no root@ds.hook [Kaapp.top "tmp=$(mktemp); crontab -l | awk '!/acme\.sh.*--cro [Knn/' > \"$tmp\"; crontab \"$tmp\"; rm -f \"$tmp\"; echo '--- [Krroot crontab now---'; crontab -l"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004heexpect {[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   "*assword:*" { send "$password\r"; exp_continue  [K}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   eof[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hEEOF[?2004l
+can't read "(mktemp)": no such variable
+    while executing
+"spawn ssh -o StrictHostKeyChecking=no root@ds.hookapp.top "tmp=$(mktemp); crontab -l | awk '!/acme\.sh.*--cron/' > \"$tmp\"; crontab \"$tmp\"; rm -f \..."
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  expect <<'EOF'[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset timeout 120[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset password "hook499A"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsspawn ssh -o StrictHostKeyChecking=no root@ds.hook [Kaapp.top "tmp=\$(mktemp); crontab -l | awk '!/acme\\.sh.*--c [Krron/' > \"\$tmp\"; crontab \"\$tmp\"; rm -f \"\$tmp\"; echo [K  '---root crontab now---'; crontab -l"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004heexpect {[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   "*assword:*" { send "$password\r"; exp_continue  [K}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   eof[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hEEOF[?2004l
+spawn ssh -o StrictHostKeyChecking=no root@ds.hookapp.top tmp=$(mktemp); crontab -l | awk '!/acme\.sh.*--cron/' > "$tmp"; crontab "$tmp"; rm -f "$tmp"; echo '---root crontab now---'; crontab -l
+root@ds.hookapp.top's password: 
+---root crontab now---
+*/5 * * * * flock -xn /tmp/stargate.lock -c '/usr/local/qcloud/stargate/admin/start.sh > /dev/null 2>&1 &'
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  expect <<'EOF'[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset timeout 120[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsset password "hook499A"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hsspawn ssh -o StrictHostKeyChecking=no root@ds.hook [Kaapp.top "ls -l /etc/cron.d/flipchess-cert-renew /usr/local/ [Kbbin/flipchess-cert-renew; systemctl is-active nginx; echo ' [K----next renew---'; grep -E 'Le_NextRenewTimeStr=' /root/.ac [Kmme.sh/ds.hookapp.top_ecc/ds.hookapp.top.conf; echo '---log  [Kttail---'; tail -n 12 /var/log/flipchess/cert-renew.log"[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004heexpect {[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   "*assword:*" { send "$password\r"; exp_continue  [K}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h   eof[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004h}[?2004l
+[0m[27m[24m[Jheredoc> [K[?2004hEEOF[?2004l
+spawn ssh -o StrictHostKeyChecking=no root@ds.hookapp.top ls -l /etc/cron.d/flipchess-cert-renew /usr/local/bin/flipchess-cert-renew; systemctl is-active nginx; echo '---next renew---'; grep -E 'Le_NextRenewTimeStr=' /root/.acme.sh/ds.hookapp.top_ecc/ds.hookapp.top.conf; echo '---log tail---'; tail -n 12 /var/log/flipchess/cert-renew.log
+root@ds.hookapp.top's password: 
+-rw-r--r-- 1 root root 145 Feb 20 01:45 /etc/cron.d/flipchess-cert-renew
+-rwxr-xr-x 1 root root 335 Feb 20 01:44 /usr/local/bin/flipchess-cert-renew
+active
+---next renew---
+Le_NextRenewTimeStr='2026-03-20T17:35:17Z'
+---log tail---
+===== 2026-02-19T17:45:09Z cert renew start =====
+[Fri Feb 20 01:45:09 AM CST 2026] ===Starting cron===
+[Fri Feb 20 01:45:09 AM CST 2026] Renewing: 'ds.hookapp.top'
+[Fri Feb 20 01:45:09 AM CST 2026] Renewing using Le_API=https://acme-v02.api.letsencrypt.org/directory
+[Fri Feb 20 01:45:09 AM CST 2026] Skipping. Next renewal time is: 2026-03-20T17:35:17Z
+[Fri Feb 20 01:45:09 AM CST 2026] Add '--force' to force renewal.
+[Fri Feb 20 01:45:09 AM CST 2026] Skipped ds.hookapp.top_ecc
+[Fri Feb 20 01:45:09 AM CST 2026] ===End cron===
+===== 2026-02-19T17:45:09Z cert renew end =====
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac FlipChess % [K[?2004h  cd /Users/w/WorkSpace/Seafile/My_Library [K//work/pycode/sendmail && /Users/w/WorkSpace/gitlab/Code/gam [Kee/FlipChess/.venv/bin/python -m pip install -q fastapi uvic [Koorn python-dotenv[?2004l
+[1m[7m%[27m[1m[0m                                                           [0m[27m[24m[Jw@Mac sendmail % [K[?2004h

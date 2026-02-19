@@ -7,6 +7,10 @@
     "dev": "vite",
     "server:dev": "tsx watch server/src/index.ts",
     "server:start": "tsx server/src/index.ts",
+    "server:start:mysql": "bash scripts/server-start-mysql.sh",
+    "mysql:up": "bash scripts/mysql-up.sh",
+    "mysql:down": "bash scripts/mysql-down.sh",
+    "test:local": "npm run mysql:up && npm run server:start:mysql",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -16,6 +20,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.15.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "ws": "^8.19.0"
