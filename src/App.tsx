@@ -783,8 +783,18 @@ function App() {
 
     if (!preserveLocalInteraction) {
       setGame(cloneGameState(match.state))
-      setTimeline([cloneGameState(match.state)])
-      setReplayIndex(0)
+      // Rebuild full timeline from initialState + moves for replay support
+      const baseState = match.initialState ?? match.state
+      const fullTimeline: GameState[] = [cloneGameState(baseState)]
+      if (match.initialState && match.moves.length > 0) {
+        let current = cloneGameState(match.initialState)
+        for (const move of match.moves) {
+          current = playMove(current, move.from, move.to)
+          fullTimeline.push(cloneGameState(current))
+        }
+      }
+      setTimeline(fullTimeline)
+      setReplayIndex(fullTimeline.length - 1)
       setIsReplayMode(false)
       const logs = mapServerMovesToLogs(match.moves, match.createdAt)
       setMoveLogs(logs)
