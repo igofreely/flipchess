@@ -1465,8 +1465,9 @@ function App() {
   }
 
   const exportFen = () => {
-    const exportState = isServerMode && activeMatch ? activeMatch.state : game
-    const fenContent = gameStateToFen(exportState)
+    // Export the full timeline (one FEN per line) so replay is possible on import
+    const fenLines = timeline.map((s) => gameStateToFen(s))
+    const fenContent = fenLines.join('\n')
     const blob = new Blob([fenContent], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -1487,15 +1488,27 @@ function App() {
     if (!file) return
 
     const text = await file.text()
-    const parsed = fenToGameState(text)
-    if (!parsed) {
+    // Support multi-line FEN (full timeline) or single-line FEN
+    const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0)
+    if (lines.length === 0) {
       window.alert('FEN 格式无效，无法导入')
       return
     }
 
-    setGame(parsed)
-    setTimeline([cloneGameState(parsed)])
-    setReplayIndex(0)
+    const importedTimeline: GameState[] = []
+    for (const line of lines) {
+      const parsed = fenToGameState(line)
+      if (!parsed) {
+        window.alert('FEN 格式无效，无法导入')
+        return
+      }
+      importedTimeline.push(parsed)
+    }
+
+    const lastState = importedTimeline[importedTimeline.length - 1]
+    setGame(cloneGameState(lastState))
+    setTimeline(importedTimeline)
+    setReplayIndex(importedTimeline.length - 1)
     setIsReplayMode(false)
     setMoveLogs([])
     setLastThinkBySide({ red: null, black: null })
