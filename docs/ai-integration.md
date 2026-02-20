@@ -146,3 +146,56 @@ VITE_AI_HTTP_TIMEOUT_MS=12000
 - 总是返回 `side`，便于日志归属与双 AI 场景统计。
 - 建议实现超时保护（迭代加深 + 最近完整层回退）。
 - 任何异常都应在 Provider 内转换为拒绝 Promise，避免 UI 卡死。
+
+## 7. 服务端接入 Pikafish(jieqi)
+
+当前项目已支持在服务端 AI 回合直接调用 `Pikafish(jieqi)`（模仿 JieqiBox 的 UCI 流程）。
+
+### 7.1 启用方式
+
+给服务端设置以下环境变量即可启用：
+
+```bash
+PIKAFISH_JIEQI_PATH=/absolute/path/to/pikafish
+PIKAFISH_EVALFILE_PATH=/absolute/path/to/pikafish.nnue
+PIKAFISH_THREADS=1
+PIKAFISH_HASH_MB=64
+```
+
+- `PIKAFISH_JIEQI_PATH`：`jieqi` 分支编译出的可执行文件路径。
+- `PIKAFISH_EVALFILE_PATH`：可选，NNUE 文件绝对路径（用于显式指定 `EvalFile`）。
+- `PIKAFISH_THREADS`：可选，默认 `1`。
+- `PIKAFISH_HASH_MB`：可选，默认 `64`。
+
+未设置 `PIKAFISH_JIEQI_PATH` 时，服务端保持使用内置本地 AI。
+
+### 7.1.1 分支兼容建议
+
+- `jieqi` 与 `jieqi_old` 都可接入；若某一分支出现 NNUE 加载失败，可切换到另一分支验证链路。
+- 建议以 `npm run check:pikafish` 为准：输出中的 `firstMoveEngine` 为 `pikafish` 才算真正启用成功。
+
+### 7.2 UCI 调用模式
+
+服务端每次搜索会按如下命令与引擎交互：
+
+```text
+uci
+setoption name Threads value <threads>
+setoption name Hash value <hash>
+isready
+ucinewgame
+position fen <jieqi-old-fen>
+go depth <d> movetime <ms>
+quit
+```
+
+并解析 `bestmove` 的前 4 位坐标（如 `a0a1`），映射回项目坐标后再进行合法性校验。
+
+### 7.3 FEN 约定
+
+服务端输出的是 Jieqi 旧格式 FEN：
+
+`[Board] [Dark Piece Pool] [Side to Move] - - [Halfmove] [Fullmove]`
+
+- 未翻开的棋子使用 `X/x`。
+- 暗子池按 `A/B/N/R/C/P` 与小写黑方统计。

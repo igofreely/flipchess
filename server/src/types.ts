@@ -1,6 +1,7 @@
 import type { GameState, Position, Side } from '../../src/game/types'
 
 export type MatchMode = 'pvp' | 'vs_ai' | 'ai_vs_ai'
+export type AiEngine = 'pikafish' | 'pikafish-fallback' | 'builtin'
 
 export interface UserRecord {
   id: string
@@ -14,12 +15,14 @@ export interface MatchSideSlot {
   userId?: string
   aiDepth: number
   aiTimeBudgetMs: number
+  aiEngine?: AiEngine
 }
 
 export interface MoveRecord {
   ply: number
   side: Side
   actor: 'user' | 'ai'
+  aiEngine?: AiEngine
   from: Position
   to: Position
   pieceText: string

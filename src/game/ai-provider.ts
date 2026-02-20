@@ -5,11 +5,16 @@ export interface AiSearchRequest {
   side: Side
   depth: number
   timeBudgetMs?: number
+  noFallback?: boolean
+  noLimit?: boolean
+  pikafishMaxThinkMs?: number
 }
 
 export interface AiSearchResult {
   side: Side
   move: { from: Position; to: Position } | null
+  engine?: 'pikafish' | 'builtin'
+  trace?: string[]
 }
 
 export interface AiProvider {
@@ -24,6 +29,9 @@ export interface AiWorkerSearchMessage {
   side: Side
   depth: number
   timeBudgetMs?: number
+  noFallback?: boolean
+  noLimit?: boolean
+  pikafishMaxThinkMs?: number
 }
 
 export interface AiWorkerResultMessage {
@@ -31,6 +39,8 @@ export interface AiWorkerResultMessage {
   requestId: number
   side: Side
   move: { from: Position; to: Position } | null
+  engine?: 'pikafish' | 'builtin'
+  trace?: string[]
 }
 
 export type AiWorkerMessage = AiWorkerSearchMessage | AiWorkerResultMessage
@@ -46,7 +56,7 @@ export const createWorkerAiProvider = (): AiProvider => {
     const task = pending.get(data.requestId)
     if (!task) return
     pending.delete(data.requestId)
-    task.resolve({ side: data.side, move: data.move })
+    task.resolve({ side: data.side, move: data.move, engine: data.engine ?? 'builtin', trace: data.trace })
   }
 
   worker.onerror = () => {
@@ -66,6 +76,9 @@ export const createWorkerAiProvider = (): AiProvider => {
         side: request.side,
         depth: request.depth,
         timeBudgetMs: request.timeBudgetMs,
+        noFallback: request.noFallback,
+        noLimit: request.noLimit,
+        pikafishMaxThinkMs: request.pikafishMaxThinkMs,
       }
 
       worker.postMessage(message)

@@ -12,6 +12,8 @@ self.onmessage = (event: MessageEvent<AiWorkerSearchMessage>) => {
     requestId: data.requestId,
     side: data.side,
     move,
+    engine: 'builtin',
+    trace: [`[worker] depth=${data.depth} budgetMs=${budget} move=${move ? `${move.from.row},${move.from.col}->${move.to.row},${move.to.col}` : 'none'}`],
   }
 
   self.postMessage(response)

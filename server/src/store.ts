@@ -54,7 +54,13 @@ const toMySqlDateTime = (value: string | Date) => {
 
 const stringifyJson = (value: unknown) => JSON.stringify(value)
 
-const parseJson = <T>(value: string): T => JSON.parse(value) as T
+const parseJson = <T>(value: unknown): T => {
+  if (typeof value === 'string') {
+    return JSON.parse(value) as T
+  }
+
+  return value as T
+}
 
 const buildPool = (): Pool => {
   const url = process.env.MYSQL_URL?.trim()

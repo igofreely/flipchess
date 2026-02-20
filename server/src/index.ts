@@ -5,9 +5,10 @@ import { randomUUID } from 'node:crypto'
 import { createInitialGame, getPieceLabel, playMove } from '../../src/game/engine'
 import { chooseBestAiMoveTimed } from '../../src/game/ai'
 import type { Position, Side } from '../../src/game/types'
+import { searchBestMoveWithPikafish } from './pikafish-jieqi'
 import { createAuthToken, requireAuth, type AuthenticatedRequest } from './auth'
 import { DataStore } from './store.ts'
-import type { MatchMode, MatchRecord, MatchSideSlot, MoveRecord, PublicUser, UserRecord } from './types'
+import type { AiEngine, MatchMode, MatchRecord, MatchSideSlot, MoveRecord, PublicUser, UserRecord } from './types'
 
 const app = express()
 const store = new DataStore()
@@ -18,6 +19,13 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN ?? '*'
 const DEFAULT_AI_DEPTH = 5
 const DEFAULT_AI_TIME_BUDGET_MS = 2000
 const MIN_AI_MOVE_INTERVAL_MS = 1000
+const PIKAFISH_SEARCH_DEPTH = 64
+const PIKAFISH_NO_LIMIT_BUDGET_MS = 12_000
+const PIKAFISH_MAX_THINK_MS = Number(process.env.PIKAFISH_MAX_THINK_MS ?? 20_000)
+const PIKAFISH_JIEQI_PATH = String(process.env.PIKAFISH_JIEQI_PATH ?? '').trim()
+const PIKAFISH_EVALFILE_PATH = String(process.env.PIKAFISH_EVALFILE_PATH ?? '').trim()
+const PIKAFISH_THREADS = Number(process.env.PIKAFISH_THREADS ?? 1)
+const PIKAFISH_HASH_MB = Number(process.env.PIKAFISH_HASH_MB ?? 64)
 
 const aiTurnTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
@@ -35,6 +43,11 @@ const clampDepth = (value: number | undefined) => {
 const clampBudget = (value: number | undefined) => {
   if (!value || Number.isNaN(value)) return DEFAULT_AI_TIME_BUDGET_MS
   return Math.max(200, Math.min(60_000, Math.floor(value)))
+}
+
+const clampPikafishThinkMs = (value: number) => {
+  const cap = Number.isFinite(PIKAFISH_MAX_THINK_MS) ? Math.max(200, Math.floor(PIKAFISH_MAX_THINK_MS)) : 12_000
+  return Math.max(200, Math.min(cap, Math.floor(value)))
 }
 
 const toPublicUser = (user: UserRecord): PublicUser => ({
@@ -142,13 +155,63 @@ const clearAiTurnTimer = (matchId: string) => {
   aiTurnTimers.delete(matchId)
 }
 
-const appendMoveLog = (match: MatchRecord, side: Side, from: Position, to: Position, actor: 'user' | 'ai') => {
+const chooseAiMoveWithConfiguredBackend = async (
+  state: MatchRecord['state'],
+  side: Side,
+  slot: MatchSideSlot,
+  addTrace?: (line: string) => void,
+) => {
+  if (PIKAFISH_JIEQI_PATH) {
+    const pikafishBudgetMs = clampPikafishThinkMs(slot.aiTimeBudgetMs)
+    addTrace?.(`[backend] prefer=pikafish depth=${PIKAFISH_SEARCH_DEPTH} budgetMs=${pikafishBudgetMs}`)
+    try {
+      const pikafishMove = await searchBestMoveWithPikafish({
+        executablePath: PIKAFISH_JIEQI_PATH,
+        evalFilePath: PIKAFISH_EVALFILE_PATH || undefined,
+        state,
+        side,
+        depth: PIKAFISH_SEARCH_DEPTH,
+        timeBudgetMs: pikafishBudgetMs,
+        threads: Number.isFinite(PIKAFISH_THREADS) ? PIKAFISH_THREADS : 1,
+        hashMb: Number.isFinite(PIKAFISH_HASH_MB) ? PIKAFISH_HASH_MB : 64,
+        onTrace: addTrace,
+      })
+      if (pikafishMove) {
+        return { move: pikafishMove, engine: 'pikafish' as AiEngine }
+      }
+      addTrace?.('[backend] pikafish returned no usable move, auto-fallback to builtin')
+    } catch (err) {
+      addTrace?.(`[backend] pikafish error, auto-fallback to builtin: ${err instanceof Error ? err.message : String(err)}`)
+    }
+    // Pikafish configured but couldn't produce a valid move for this position — use builtin
+    return {
+      move: chooseBestAiMoveTimed(state, side, slot.aiDepth, slot.aiTimeBudgetMs),
+      engine: 'pikafish-fallback' as AiEngine,
+    }
+  }
+
+  addTrace?.(`[backend] use builtin depth=${slot.aiDepth} budgetMs=${slot.aiTimeBudgetMs}`)
+  return {
+    move: chooseBestAiMoveTimed(state, side, slot.aiDepth, slot.aiTimeBudgetMs),
+    engine: 'builtin' as AiEngine,
+  }
+}
+
+const appendMoveLog = (
+  match: MatchRecord,
+  side: Side,
+  from: Position,
+  to: Position,
+  actor: 'user' | 'ai',
+  aiEngine?: AiEngine,
+) => {
   const movedId = match.state.board[to.row]?.[to.col]
   const pieceText = movedId ? getPieceLabel(match.state.pieces[movedId]) : '子'
   const moveLog: MoveRecord = {
     ply: match.state.moveCount,
     side,
     actor,
+    aiEngine,
     from: { ...from },
     to: { ...to },
     pieceText,
@@ -172,25 +235,43 @@ const scheduleAiTurnIfNeeded = (matchId: string, delayMs = MIN_AI_MOVE_INTERVAL_
     const slot = currentSideSlot(match)
     if (slot.type !== 'ai') return
 
+    console.log(
+      `[ai] match=${match.id} side=${side} begin preferred=${PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin'} depth=${slot.aiDepth} budgetMs=${slot.aiTimeBudgetMs}`,
+    )
+
     let move: ReturnType<typeof chooseBestAiMoveTimed>
+    let aiEngineUsed: AiEngine = 'builtin'
     try {
-      move = chooseBestAiMoveTimed(match.state, side, slot.aiDepth, slot.aiTimeBudgetMs)
-    } catch {
-      match.status = 'finished'
-      match.result = 'draw'
-      match.termination = 'AI计算异常，判和'
-      match.state = {
-        ...match.state,
-        winner: null,
-        isDraw: true,
-        selected: null,
-        legalMoves: [],
-        message: 'AI计算异常，判和',
+      const result = await chooseAiMoveWithConfiguredBackend(match.state, side, slot)
+      move = result.move
+      aiEngineUsed = result.engine
+    } catch (error) {
+      console.warn(
+        `[ai] match=${match.id} side=${side} preferred engine failed, fallback to builtin: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      try {
+        move = chooseBestAiMoveTimed(match.state, side, slot.aiDepth, slot.aiTimeBudgetMs)
+        aiEngineUsed = 'builtin'
+      } catch (fallbackError) {
+        console.error(
+          `[ai] match=${match.id} side=${side} builtin fallback failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`,
+        )
+        match.status = 'finished'
+        match.result = 'draw'
+        match.termination = 'AI计算异常，判和'
+        match.state = {
+          ...match.state,
+          winner: null,
+          isDraw: true,
+          selected: null,
+          legalMoves: [],
+          message: 'AI计算异常，判和',
+        }
+        clearNegotiationState(match)
+        match.updatedAt = new Date().toISOString()
+        await store.upsertMatch(match)
+        return
       }
-      clearNegotiationState(match)
-      match.updatedAt = new Date().toISOString()
-      await store.upsertMatch(match)
-      return
     }
 
     if (!move) {
@@ -211,7 +292,9 @@ const scheduleAiTurnIfNeeded = (matchId: string, delayMs = MIN_AI_MOVE_INTERVAL_
 
     match.state = next
     match.updatedAt = new Date().toISOString()
-    appendMoveLog(match, side, move.from, move.to, 'ai')
+  slot.aiEngine = aiEngineUsed
+  appendMoveLog(match, side, move.from, move.to, 'ai', aiEngineUsed)
+    console.log(`[ai] match=${match.id} side=${side} engine=${aiEngineUsed} move=${move.from.row},${move.from.col}->${move.to.row},${move.to.col}`)
     finalizeMatchStatus(match)
     await store.upsertMatch(match)
 
@@ -224,7 +307,80 @@ const scheduleAiTurnIfNeeded = (matchId: string, delayMs = MIN_AI_MOVE_INTERVAL_
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'flipchess-server' })
+  res.json({
+    ok: true,
+    service: 'flipchess-server',
+    ai: {
+      supportsNoFallback: true,
+      supportsNoLimit: true,
+    },
+  })
+})
+
+app.post('/api/ai/search', async (req, res) => {
+  const trace: string[] = []
+  const addTrace = (line: string) => {
+    const time = new Date().toISOString().slice(11, 23)
+    trace.push(`${time} ${line}`)
+  }
+
+  const side = req.body?.side === 'red' ? 'red' : req.body?.side === 'black' ? 'black' : null
+  const noFallback = req.body?.noFallback === true
+  const noLimit = req.body?.noLimit === true
+  const requestedPikafishMaxThinkMs = Number(req.body?.pikafishMaxThinkMs)
+  if (!side) {
+    res.status(400).json({ message: 'Invalid side' })
+    return
+  }
+
+  const state = req.body?.state
+  if (!isGameStateLike(state)) {
+    res.status(400).json({ message: 'Invalid state' })
+    return
+  }
+
+  const depth = clampDepth(Number(req.body?.depth))
+  const requestedBudgetMs = noLimit ? PIKAFISH_NO_LIMIT_BUDGET_MS : clampBudget(Number(req.body?.timeBudgetMs))
+  const requestCapMs = Number.isFinite(requestedPikafishMaxThinkMs)
+    ? clampPikafishThinkMs(requestedPikafishMaxThinkMs)
+    : Number.POSITIVE_INFINITY
+  const timeBudgetMs = clampPikafishThinkMs(Math.min(requestedBudgetMs, requestCapMs))
+  addTrace(`[backend] request side=${side} depth=${depth} budgetMs=${timeBudgetMs} noFallback=${noFallback} noLimit=${noLimit}`)
+  const slot: MatchSideSlot = {
+    type: 'ai',
+    aiDepth: depth,
+    aiTimeBudgetMs: timeBudgetMs,
+    aiEngine: PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin',
+  }
+
+  try {
+    const result = await chooseAiMoveWithConfiguredBackend(state, side, slot, addTrace)
+    if (noFallback && result.engine !== 'pikafish' && result.engine !== 'pikafish-fallback') {
+      addTrace('[backend] locked Pikafish requested but not configured on server')
+      res.status(503).json({ message: 'Pikafish is not configured on server', trace })
+      return
+    }
+    addTrace(`[backend] result engine=${result.engine} move=${result.move ? `${result.move.from.row},${result.move.from.col}->${result.move.to.row},${result.move.to.col}` : 'none'}`)
+    res.json({ side, move: result.move, engine: result.engine, trace })
+    return
+  } catch (error) {
+    if (noFallback) {
+      addTrace(`[backend] preferred engine failed (locked): ${error instanceof Error ? error.message : String(error)}`)
+      res.status(503).json({ message: `AI preferred engine failed: ${error instanceof Error ? error.message : String(error)}`, trace })
+      return
+    }
+    addTrace(`[backend] preferred engine failed, fallback builtin: ${error instanceof Error ? error.message : String(error)}`)
+    console.warn(`[ai-http] preferred engine failed, fallback to builtin: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  try {
+    const move = chooseBestAiMoveTimed(state, side, depth, timeBudgetMs)
+    addTrace(`[backend] fallback builtin result move=${move ? `${move.from.row},${move.from.col}->${move.to.row},${move.to.col}` : 'none'}`)
+    res.json({ side, move, engine: 'builtin' as AiEngine, trace })
+  } catch (error) {
+    addTrace(`[backend] fallback builtin failed: ${error instanceof Error ? error.message : String(error)}`)
+    res.status(500).json({ message: `AI search failed: ${error instanceof Error ? error.message : String(error)}`, trace })
+  }
 })
 
 app.post('/api/auth/register', async (req, res) => {
@@ -331,6 +487,7 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
       type: 'ai',
       aiDepth: clampDepth(aiDepthBySide.black),
       aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.black),
+      aiEngine: PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin',
     },
     initialState: cloneState(initialState),
     state: initialState,
@@ -372,6 +529,7 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
         type: 'ai',
         aiDepth: clampDepth(aiDepthBySide.red),
         aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.red),
+        aiEngine: PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin',
       }
       newMatch.black = {
         type: 'user',
@@ -385,11 +543,13 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
       type: 'ai',
       aiDepth: clampDepth(aiDepthBySide.red),
       aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.red),
+      aiEngine: PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin',
     }
     newMatch.black = {
       type: 'ai',
       aiDepth: clampDepth(aiDepthBySide.black),
       aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.black),
+      aiEngine: PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin',
     }
   }
 

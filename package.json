@@ -10,6 +10,7 @@
     "server:start:mysql": "bash scripts/server-start-mysql.sh",
     "mysql:up": "bash scripts/mysql-up.sh",
     "mysql:down": "bash scripts/mysql-down.sh",
+    "check:pikafish": "bash scripts/check-pikafish.sh",
     "test:local": "npm run mysql:up && npm run server:start:mysql",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

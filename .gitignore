@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Runtime / build artifacts
+*.profraw
+.runlogs/
+
+# Large binary files
+*.nnue

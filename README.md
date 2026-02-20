@@ -88,7 +88,57 @@ npm run test:local
 
 ---
 
+## 一键部署到服务器
+
+使用 `scripts/deploy.sh` 可在本地一键完成：构建 → 打包 → 上传 → 远程安装依赖 → 编译 Pikafish → 启动服务 → 配置 nginx → 健康检查。
+
+> 所有文件（源码、Pikafish 源码、NNUE 模型）均从本地上传，**不依赖服务器访问 GitHub**。
+
+### 快速使用
+
+```bash
+# 默认部署到 ds.hookapp.top（密码登录需 sshpass）
+DEPLOY_PASSWORD=your_password bash scripts/deploy.sh
+
+# 自定义主机
+DEPLOY_HOST=1.2.3.4 DEPLOY_PASSWORD=xxx bash scripts/deploy.sh
+
+# 已配置 SSH 密钥则无需 DEPLOY_PASSWORD
+bash scripts/deploy.sh
+```
+
+### 可配置环境变量
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `DEPLOY_HOST` | `ds.hookapp.top` | 目标服务器地址 |
+| `DEPLOY_USER` | `root` | SSH 用户名 |
+| `DEPLOY_PASSWORD` | _(空)_ | SSH 密码（需安装 sshpass） |
+| `DEPLOY_DIR` | `/opt/flipchess` | 远程部署目录 |
+| `DOMAIN` | `ds.hookapp.top` | 域名（用于 nginx 配置） |
+| `MYSQL_APP_USER` | `flipchess` | MySQL 应用用户 |
+| `MYSQL_APP_PASSWORD` | `hook499A` | MySQL 应用密码 |
+| `LOCAL_PIKAFISH_SRC` | `../Pikafish-jieqi-old/src` | 本地 Pikafish 源码路径 |
+| `LOCAL_NNUE` | `server/data/pikafish-master.nnue` | 本地 NNUE 模型文件 |
+
+### 前置条件
+
+- 服务器：Debian 12+、Node.js 20+、nginx、MySQL/MariaDB、PM2
+- 域名已解析到服务器，端口 80/443/33333 已放行
+- HTTPS 证书已配置（首次可用 `scripts/enable-https-debian12.sh`）
+- macOS 使用密码登录需安装 sshpass：`brew install hudochenkov/sshpass/sshpass`
+
+### 安装 sshpass（macOS）
+
+```bash
+brew install hudochenkov/sshpass/sshpass
+```
+
+---
+
 ## 服务器部署（Debian 12：发布 + 443 证书 + 自动续签）
+
+> **推荐使用上面的一键部署脚本。** 以下为手动步骤，仅供参考或首次初始化服务器环境使用。
 
 以下流程是“完整上线命令”，包含：发版、HTTPS（443）与续签。
 
@@ -244,3 +294,89 @@ npm run preview -- --host 0.0.0.0 --port 2222
 
 - 服务器 API：`docs/server-api.md`
 - AI 接入规范：`docs/ai-integration.md`
+
+## Pikafish(jieqi) 接入（服务端）
+
+可按 JieqiBox 的思路，把 `official-pikafish/Pikafish` 的 `jieqi` 分支作为服务端 AI 引擎：
+
+1. 编译引擎（示例）：
+
+```bash
+git clone -b jieqi https://github.com/official-pikafish/Pikafish.git
+cd Pikafish/src
+make -j profile-build
+```
+
+2. 启动后端前设置环境变量：
+
+```bash
+export PIKAFISH_JIEQI_PATH=/absolute/path/to/Pikafish/src/pikafish
+export PIKAFISH_EVALFILE_PATH=/absolute/path/to/pikafish.nnue
+export PIKAFISH_THREADS=1
+export PIKAFISH_HASH_MB=64
+export PIKAFISH_MAX_THINK_MS=12000
+npm run server:start:mysql
+```
+
+说明：
+
+- 配置 `PIKAFISH_JIEQI_PATH` 后，服务器 AI 回合会优先走 Pikafish。
+- 若默认网络文件加载失败，可配置 `PIKAFISH_EVALFILE_PATH` 指定 NNUE 文件绝对路径。
+- 可通过 `PIKAFISH_MAX_THINK_MS` 限制 Pikafish 单次思考最长时间（毫秒）。
+- 未配置该变量时，自动使用项目内置 AI。
+- 若 Pikafish 调用异常，会自动回退到内置 AI，避免对局中断。
+
+补充（当前仓库脚本默认行为）：
+
+- `npm run server:start:mysql` 调用的 `scripts/server-start-mysql.sh` 已支持自动探测 Pikafish：
+	- 优先 `../Pikafish-jieqi-old/src/PikaJieQi`
+	- 其次 `../Pikafish-jieqi/src/pikafish`
+- 若未手动设置 `PIKAFISH_EVALFILE_PATH`，脚本会自动尝试使用引擎同目录下的 `pikafish.nnue`。
+- 启动前会做一次引擎预检；若官方 `jieqi` 因 NNUE 加载失败不可用，会自动回退到 `jieqi-old` 并在日志打印 `[server-start] ... fallback to jieqi-old`。
+
+### 兼容性说明（2026-02）
+
+当前已验证结论：
+
+| 引擎分支 | 可执行文件 | 与公开 `master-net/pikafish.nnue` 兼容性 | 在本项目中的状态 |
+|---|---|---|---|
+| `jieqi` | `pikafish` | ✅ 已验证可用（需正确 NNUE） | 可正常由 Pikafish 落子 |
+| `jieqi_old` | `PikaJieQi` | ✅ 已验证可用 | 可正常由 Pikafish 落子 |
+
+建议始终以 `npm run check:pikafish` 的 `firstMoveEngine` 结果为准。
+
+### 一键切换命令
+
+1. 使用 `jieqi_old`：
+
+```bash
+export PIKAFISH_JIEQI_PATH=/tmp/Pikafish-jieqi-old-test/src/PikaJieQi
+npm run check:pikafish
+```
+
+2. 使用 `jieqi`（推荐显式配置 `PIKAFISH_EVALFILE_PATH`）：
+
+```bash
+export PIKAFISH_JIEQI_PATH=/absolute/path/to/Pikafish-jieqi/src/pikafish
+export PIKAFISH_EVALFILE_PATH=/absolute/path/to/pikafish.nnue
+npm run check:pikafish
+```
+
+3. 通过标准：自检输出里 `firstMoveEngine` 必须是 `pikafish`。
+
+### 一键自检（推荐）
+
+```bash
+PIKAFISH_JIEQI_PATH=/absolute/path/to/Pikafish/src/pikafish npm run check:pikafish
+
+# 或显式指定网络文件（推荐）
+PIKAFISH_JIEQI_PATH=/absolute/path/to/Pikafish/src/pikafish \
+PIKAFISH_EVALFILE_PATH=/absolute/path/to/pikafish.nnue \
+npm run check:pikafish
+```
+
+该命令会自动：
+
+- 拉起 MySQL（若未启动）
+- 在独立端口启动后端并注入 `PIKAFISH_JIEQI_PATH`
+- 走通注册/建局/轮询流程并校验 AI 首步来自 `pikafish`（不是回退内置 AI）

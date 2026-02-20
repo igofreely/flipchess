@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import './App.css'
 import { createInitialGame, getPieceLabel, playMove, selectCell } from './game/engine'
 import type { GameState, Position, Side } from './game/types'
 import { createWorkerAiProvider, type AiProvider } from './game/ai-provider'
 import { createHttpAiProvider } from './game/ai-provider-http'
-import { serverApi, type RankingItem, type ServerMatch, type ServerUser } from './server/api'
+import { SERVER_API_BASE, serverApi, type RankingItem, type ServerMatch, type ServerUser } from './server/api'
 import { playSound } from './sound/effects'
 
 const aliveCount = (game: GameState) =>
@@ -14,14 +14,19 @@ const cloneGameState = (state: GameState): GameState => JSON.parse(JSON.stringif
 const MIN_AI_DEPTH = 1
 const MAX_AI_DEPTH = 8
 const AI_TIME_BUDGET_OPTIONS = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
+const PIKAFISH_MAX_THINK_OPTIONS = [2000, 3000, 5000, 8000, 10000, 12000, 15000, 20000]
 const DEFAULT_AI_DEPTH = 5
-const DEFAULT_AI_BUDGET = 2000
+const DEFAULT_AI_BUDGET = 3000
+const DEFAULT_PIKAFISH_MAX_THINK_MS = 12000
 const SERVER_POLL_INTERVAL_MS = 900
+const AI_HTTP_RETRY_DELAY_MS = 500
+const AI_HTTP_MAX_RETRIES = 8
 
 interface MoveLogItem {
   id: number
   side: Side
   actor: 'ai' | 'human'
+  aiEngine?: 'pikafish' | 'builtin'
   pieceText: string
   from: Position
   to: Position
@@ -40,6 +45,12 @@ const BOARD_COLS = 9
 
 const sideText = (side: Side) => (side === 'red' ? '红方' : '黑方')
 const nowMs = () => Date.now()
+const aiEngineText = (engine?: 'pikafish' | 'builtin') => (engine === 'pikafish' ? 'Pikafish' : '本地AI')
+const localPlayerText = (aiEnabled: boolean, engine?: 'pikafish' | 'builtin') => {
+  if (!aiEnabled) return '本地玩家'
+  if (!engine) return 'AI(自动)'
+  return `AI(${aiEngineText(engine)})`
+}
 
 const actorText = (actor: MoveLogItem['actor']) => (actor === 'ai' ? 'AI' : '人类')
 const oppositeSide = (side: Side): Side => (side === 'red' ? 'black' : 'red')
@@ -229,6 +240,9 @@ interface LocalSnapshot {
   boardFlipped: boolean
   soundOn: boolean
   aiEnabledBySide: Record<Side, boolean>
+  aiPikafishEnabledBySide: Record<Side, boolean>
+  aiNoFallbackBySide?: Record<Side, boolean>
+  aiPikafishMaxThinkBySide: Record<Side, number>
   aiDepthBySide: Record<Side, number>
   aiTimeBudgetBySide: Record<Side, number>
   drawOfferBySide: Record<Side, boolean>
@@ -248,6 +262,7 @@ const mapServerMovesToLogs = (moves: ServerMatch['moves'], matchCreatedAt?: stri
       id: item.ply,
       side: item.side,
       actor: item.actor === 'ai' ? 'ai' : 'human',
+      aiEngine: item.aiEngine,
       pieceText: item.pieceText,
       from: { ...item.from },
       to: { ...item.to },
@@ -262,6 +277,11 @@ function App() {
   const [soundOn, setSoundOn] = useState(true)
   const [boardFlipped, setBoardFlipped] = useState(false)
   const [aiEnabledBySide, setAiEnabledBySide] = useState<Record<Side, boolean>>({ red: false, black: false })
+  const [aiPikafishEnabledBySide, setAiPikafishEnabledBySide] = useState<Record<Side, boolean>>({ red: false, black: false })
+  const [aiPikafishMaxThinkBySide, setAiPikafishMaxThinkBySide] = useState<Record<Side, number>>({
+    red: DEFAULT_PIKAFISH_MAX_THINK_MS,
+    black: DEFAULT_PIKAFISH_MAX_THINK_MS,
+  })
   const [aiDepthBySide, setAiDepthBySide] = useState<Record<Side, number>>({
     red: DEFAULT_AI_DEPTH,
     black: DEFAULT_AI_DEPTH,
@@ -294,10 +314,17 @@ function App() {
   const [createAiSide, setCreateAiSide] = useState<Side>('black')
   const [serverBusy, setServerBusy] = useState(false)
   const [serverMessage, setServerMessage] = useState('')
+  const [localAiLockMessage, setLocalAiLockMessage] = useState('')
+  const [localAiLockProbeMessage, setLocalAiLockProbeMessage] = useState('')
+  const [aiInteractionTrace, setAiInteractionTrace] = useState<string[]>([])
   const [serverView, setServerView] = useState<'match' | 'ranking'>('match')
   const [clockNowMs, setClockNowMs] = useState(() => nowMs())
-  const aiProviderRef = useRef<AiProvider | null>(null)
+  const [aiProviderMode, setAiProviderMode] = useState<'worker' | 'http' | 'auto'>('auto')
+  const aiWorkerProviderRef = useRef<AiProvider | null>(null)
+  const aiHttpProviderRef = useRef<AiProvider | null>(null)
   const aiSearchTokenRef = useRef(0)
+  const aiRetryCountRef = useRef<Record<Side, number>>({ red: 0, black: 0 })
+  const [aiSearchRetryTick, setAiSearchRetryTick] = useState(0)
   const pgnInputRef = useRef<HTMLInputElement | null>(null)
   const serverPgnInputRef = useRef<HTMLInputElement | null>(null)
   const turnStartAtRef = useRef(0)
@@ -333,20 +360,29 @@ function App() {
   const effectiveBoardFlipped = isServerMode ? myServerSide === 'black' : boardFlipped
   const statusDrawBySide = isServerMode && activeMatch ? activeMatch.drawOfferBySide : drawOfferBySide
   const statusUndoText = isServerMode && activeMatch?.undoRequest ? `${sideText(activeMatch.undoRequest.fromSide)} 请求中` : '无'
+  const localLastAiEngineBySide: Record<Side, 'pikafish' | 'builtin' | undefined> = {
+    red: [...moveLogs].reverse().find((log) => log.actor === 'ai' && log.side === 'red')?.aiEngine,
+    black: [...moveLogs].reverse().find((log) => log.actor === 'ai' && log.side === 'black')?.aiEngine,
+  }
+  const localAiSourceBySide: Record<Side, string> = {
+    red: !aiEnabledBySide.red ? 'AI关闭' : localLastAiEngineBySide.red ? aiEngineText(localLastAiEngineBySide.red) : '未触发',
+    black: !aiEnabledBySide.black ? 'AI关闭' : localLastAiEngineBySide.black ? aiEngineText(localLastAiEngineBySide.black) : '未触发',
+  }
+  const localAiSourceSummary = `红方${localAiSourceBySide.red} / 黑方${localAiSourceBySide.black}`
   const statusRedPlayer = isServerMode
     ? activeMatch
       ? activeMatch.red.type === 'user'
         ? activeMatch.red.username ?? '未知用户'
-        : 'AI'
+        : `AI(${aiEngineText(activeMatch.red.aiEngine)})`
       : '--'
-    : '本地玩家'
+    : localPlayerText(aiEnabledBySide.red, localLastAiEngineBySide.red)
   const statusBlackPlayer = isServerMode
     ? activeMatch
       ? activeMatch.black.type === 'user'
         ? activeMatch.black.username ?? '未知用户'
-        : 'AI'
+        : `AI(${aiEngineText(activeMatch.black.aiEngine)})`
       : '--'
-    : '本地玩家'
+    : localPlayerText(aiEnabledBySide.black, localLastAiEngineBySide.black)
   const statusSummaryText = `提和状态：红${statusDrawBySide.red ? '已提' : '未提'} / 黑${statusDrawBySide.black ? '已提' : '未提'} ｜ 悔棋请求：${statusUndoText} ｜ 双方：红方${statusRedPlayer} / 黑方${statusBlackPlayer}`
   const aiThinkingSide: Side | null = !isReplayMode && !game.winner && !game.isDraw && aiEnabledBySide[game.turn] ? game.turn : null
   const useCreateAiConfig = createMode === 'ai_vs_ai' || createMode === 'vs_ai'
@@ -407,6 +443,10 @@ function App() {
       setBoardFlipped(parsed.boardFlipped ?? false)
       setSoundOn(parsed.soundOn ?? true)
       setAiEnabledBySide(parsed.aiEnabledBySide ?? { red: false, black: false })
+      setAiPikafishEnabledBySide(parsed.aiPikafishEnabledBySide ?? parsed.aiNoFallbackBySide ?? { red: false, black: false })
+      setAiPikafishMaxThinkBySide(
+        parsed.aiPikafishMaxThinkBySide ?? { red: DEFAULT_PIKAFISH_MAX_THINK_MS, black: DEFAULT_PIKAFISH_MAX_THINK_MS },
+      )
       setAiDepthBySide(parsed.aiDepthBySide ?? { red: DEFAULT_AI_DEPTH, black: DEFAULT_AI_DEPTH })
       setAiTimeBudgetBySide(parsed.aiTimeBudgetBySide ?? { red: DEFAULT_AI_BUDGET, black: DEFAULT_AI_BUDGET })
       setDrawOfferBySide(parsed.drawOfferBySide ?? { red: false, black: false })
@@ -451,6 +491,8 @@ function App() {
       boardFlipped,
       soundOn,
       aiEnabledBySide,
+      aiPikafishEnabledBySide,
+      aiPikafishMaxThinkBySide,
       aiDepthBySide,
       aiTimeBudgetBySide,
       drawOfferBySide,
@@ -467,6 +509,8 @@ function App() {
     boardFlipped,
     soundOn,
     aiEnabledBySide,
+    aiPikafishEnabledBySide,
+    aiPikafishMaxThinkBySide,
     aiDepthBySide,
     aiTimeBudgetBySide,
     drawOfferBySide,
@@ -504,24 +548,84 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const providerKind = (import.meta.env.VITE_AI_PROVIDER ?? 'worker').toString().toLowerCase()
-    const provider =
-      providerKind === 'http' && import.meta.env.VITE_AI_HTTP_ENDPOINT
-        ? createHttpAiProvider({
-            endpoint: import.meta.env.VITE_AI_HTTP_ENDPOINT,
-            timeoutMs: Number(import.meta.env.VITE_AI_HTTP_TIMEOUT_MS ?? 12_000),
-          })
-        : createWorkerAiProvider()
+    if (!aiPikafishEnabledBySide.red) {
+      aiRetryCountRef.current.red = 0
+    }
+    if (!aiPikafishEnabledBySide.black) {
+      aiRetryCountRef.current.black = 0
+    }
+    if (aiPikafishEnabledBySide.red || aiPikafishEnabledBySide.black) return
+    setLocalAiLockMessage('')
+  }, [aiPikafishEnabledBySide])
 
-    aiProviderRef.current = provider
+  useEffect(() => {
+    const providerKind = (import.meta.env.VITE_AI_PROVIDER ?? 'auto').toString().toLowerCase()
+    const endpointFromEnv = String(import.meta.env.VITE_AI_HTTP_ENDPOINT ?? '').trim()
+    const endpoint = endpointFromEnv || `${SERVER_API_BASE}/ai/search`
+    const timeoutMs = Number(import.meta.env.VITE_AI_HTTP_TIMEOUT_MS ?? 12_000)
+
+    const mode: 'worker' | 'http' | 'auto' =
+      providerKind === 'worker' || providerKind === 'http' ? providerKind : 'auto'
+    setAiProviderMode(mode)
+
+    const workerProvider = createWorkerAiProvider()
+    const httpProvider = mode === 'worker' ? null : createHttpAiProvider({ endpoint, timeoutMs })
+
+    aiWorkerProviderRef.current = workerProvider
+    aiHttpProviderRef.current = httpProvider
 
     return () => {
-      aiProviderRef.current?.dispose()
-      aiProviderRef.current = null
+      aiWorkerProviderRef.current?.dispose()
+      aiHttpProviderRef.current?.dispose()
+      aiWorkerProviderRef.current = null
+      aiHttpProviderRef.current = null
     }
   }, [])
 
-  const applyServerMatch = (match: ServerMatch) => {
+  useEffect(() => {
+    if (playMode !== 'local') return
+
+    const probeLockCapability = async () => {
+      const endpoint = `${SERVER_API_BASE}/health`
+      try {
+        const response = await fetch(endpoint, { method: 'GET' })
+        if (!response.ok) {
+          setLocalAiLockProbeMessage(`Pikafish启用能力检测失败：后端健康检查HTTP ${response.status}`)
+          return
+        }
+
+        const payload = (await response.json()) as {
+          ai?: { supportsNoFallback?: unknown; supportsNoLimit?: unknown }
+        }
+        const supportsNoFallback = payload.ai?.supportsNoFallback === true
+        const supportsNoLimit = payload.ai?.supportsNoLimit === true
+        if (supportsNoFallback && supportsNoLimit) {
+          setLocalAiLockProbeMessage('')
+          return
+        }
+
+        setLocalAiLockProbeMessage('当前后端不支持“开启Pikafish”选项，请重启后端到最新代码')
+      } catch (error) {
+        const detail = error instanceof Error && error.message ? `：${error.message}` : ''
+        setLocalAiLockProbeMessage(`Pikafish启用能力检测失败，后端不可达${detail}`)
+      }
+    }
+
+    void probeLockCapability()
+  }, [playMode])
+
+  const appendAiTrace = useCallback((lines: string[]) => {
+    if (lines.length === 0) return
+    const normalized = lines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => `${new Date().toLocaleTimeString('zh-CN', { hour12: false })} ${line}`)
+    if (normalized.length === 0) return
+
+    setAiInteractionTrace((prev) => [...prev, ...normalized].slice(-120))
+  }, [])
+
+  const applyServerMatch = useCallback((match: ServerMatch) => {
     const prevMatch = activeServerMatchRef.current
     if (soundOnRef.current && prevMatch && prevMatch.id === match.id) {
       const moved = match.moves.length > prevMatch.moves.length || match.state.moveCount > prevMatch.state.moveCount
@@ -598,7 +702,7 @@ function App() {
     }
 
     activeServerMatchRef.current = match
-  }
+  }, [serverToken, serverUser?.id])
 
   const refreshRankings = async () => {
     try {
@@ -656,7 +760,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [serverToken, activeMatchId])
+  }, [serverToken, activeMatchId, applyServerMatch])
 
   useEffect(() => {
     if (!isServerMode || !serverToken || !activeMatch) return
@@ -688,7 +792,7 @@ function App() {
       stopped = true
       window.clearInterval(timer)
     }
-  }, [isServerMode, serverToken, activeMatch])
+  }, [isServerMode, serverToken, activeMatch, applyServerMatch])
 
   const handleRegister = async () => {
     setServerBusy(true)
@@ -1132,6 +1236,10 @@ function App() {
     setAiEnabledBySide((prev) => ({ ...prev, [side]: !prev[side] }))
   }
 
+  const toggleAiNoFallbackForSide = (side: Side) => {
+    setAiPikafishEnabledBySide((prev) => ({ ...prev, [side]: !prev[side] }))
+  }
+
   const decreaseAiDepth = (side: Side) => {
     setAiDepthBySide((prev) => ({
       ...prev,
@@ -1150,6 +1258,12 @@ function App() {
     const parsed = Number(value)
     if (Number.isNaN(parsed)) return
     setAiTimeBudgetBySide((prev) => ({ ...prev, [side]: parsed }))
+  }
+
+  const updatePikafishMaxThink = (side: Side, value: string) => {
+    const parsed = Number(value)
+    if (Number.isNaN(parsed) || parsed <= 0) return
+    setAiPikafishMaxThinkBySide((prev) => ({ ...prev, [side]: parsed }))
   }
 
   const toggleBoardSide = () => {
@@ -1174,6 +1288,8 @@ function App() {
     setLastThinkBySide({ red: lastThinkBySide.black, black: lastThinkBySide.red })
     setDrawOfferBySide({ red: drawOfferBySide.black, black: drawOfferBySide.red })
     setAiEnabledBySide({ red: aiEnabledBySide.black, black: aiEnabledBySide.red })
+    setAiPikafishEnabledBySide({ red: aiPikafishEnabledBySide.black, black: aiPikafishEnabledBySide.red })
+    setAiPikafishMaxThinkBySide({ red: aiPikafishMaxThinkBySide.black, black: aiPikafishMaxThinkBySide.red })
     setAiDepthBySide({ red: aiDepthBySide.black, black: aiDepthBySide.red })
     setAiTimeBudgetBySide({ red: aiTimeBudgetBySide.black, black: aiTimeBudgetBySide.red })
     turnStartAtRef.current = nowMs()
@@ -1435,72 +1551,224 @@ function App() {
     if (!aiEnabledBySide[side]) return
     if (isReplayMode) return
     if (game.winner || game.isDraw) return
-    if (!aiProviderRef.current) return
+    const pikafishEnabled = aiPikafishEnabledBySide[side]
+
+    const searchRequest = {
+      state: game,
+      side,
+      depth: aiDepthBySide[side],
+      timeBudgetMs: pikafishEnabled ? aiPikafishMaxThinkBySide[side] : aiTimeBudgetBySide[side],
+      noFallback: pikafishEnabled,
+      pikafishMaxThinkMs: aiPikafishMaxThinkBySide[side],
+    }
+
+    const workerProvider = aiWorkerProviderRef.current
+    const httpProvider = aiHttpProviderRef.current
+
+    const searchWithWorker = () => {
+      if (!workerProvider) throw new Error('Worker AI provider unavailable')
+      return workerProvider.search(searchRequest)
+    }
+
+    const searchWithHttp = () => {
+      if (!httpProvider) throw new Error('HTTP AI provider unavailable')
+      return httpProvider.search(searchRequest)
+    }
+
+    let selectedProvider: 'worker' | 'http' = 'worker'
+    const searchPromise = (() => {
+      if (aiProviderMode === 'worker') {
+        selectedProvider = 'worker'
+        return searchWithWorker()
+      }
+      if (aiProviderMode === 'http') {
+        if (pikafishEnabled) {
+          selectedProvider = 'http'
+          return searchWithHttp()
+        }
+        selectedProvider = 'worker'
+        return searchWithWorker()
+      }
+
+      if (pikafishEnabled) {
+        selectedProvider = 'http'
+        return searchWithHttp()
+      }
+
+      selectedProvider = 'worker'
+      return searchWithWorker()
+    })()
+
+    appendAiTrace([
+      `[frontend] 发起AI请求 token=${searchToken} side=${side} provider=${selectedProvider} depth=${searchRequest.depth} budgetMs=${searchRequest.timeBudgetMs}`,
+    ])
 
     const snapshot = game
-    void aiProviderRef.current
-      .search({
-        state: snapshot,
-        side,
-        depth: aiDepthBySide[side],
-        timeBudgetMs: aiTimeBudgetBySide[side],
+    const handlePikafishFailure = (detailText: string, traceLines: string[] = []) => {
+      if (traceLines.length > 0) {
+        appendAiTrace(traceLines)
+      }
+
+      const nextRetries = (aiRetryCountRef.current[side] ?? 0) + 1
+      aiRetryCountRef.current[side] = nextRetries
+      appendAiTrace([`[frontend] Pikafish失败 ${nextRetries}/${AI_HTTP_MAX_RETRIES}：${detailText}`])
+
+      if (nextRetries >= AI_HTTP_MAX_RETRIES) {
+        setLocalAiLockMessage(
+          `${sideText(side)}Pikafish请求失败（${nextRetries}/${AI_HTTP_MAX_RETRIES}）：${detailText}，改用本地AI`,
+        )
+        appendAiTrace(['[frontend] 达到最大重试，切换本地AI兜底'])
+        void searchWithWorker()
+          .then((fallbackData) => {
+            if (searchToken !== aiSearchTokenRef.current) return
+            aiRetryCountRef.current[side] = 0
+            if (fallbackData.trace?.length) {
+              appendAiTrace(fallbackData.trace)
+            }
+            applyAiResult({ ...fallbackData, engine: 'builtin' })
+          })
+          .catch((fallbackError: unknown) => {
+            if (searchToken !== aiSearchTokenRef.current) return
+            const fallbackDetail = fallbackError instanceof Error && fallbackError.message ? fallbackError.message : '未知错误'
+            appendAiTrace([`[frontend] 本地AI兜底失败：${fallbackDetail}`])
+            setLocalAiLockMessage(
+              `${sideText(side)}Pikafish重试失败且本地AI兜底失败：${fallbackDetail}，请手动操作`,
+            )
+          })
+        return
+      }
+
+      setLocalAiLockMessage(
+        `${sideText(side)}Pikafish请求失败（${nextRetries}/${AI_HTTP_MAX_RETRIES}）：${detailText}，${AI_HTTP_RETRY_DELAY_MS}ms后重试`,
+      )
+      window.setTimeout(() => {
+        if (searchToken !== aiSearchTokenRef.current) return
+        setAiSearchRetryTick((prev) => prev + 1)
+      }, AI_HTTP_RETRY_DELAY_MS)
+    }
+
+    const applyAiResult = (data: {
+      side: Side
+      move: { from: Position; to: Position } | null
+      engine?: 'pikafish' | 'builtin'
+      trace?: string[]
+    }) => {
+      if (data.trace?.length) {
+        appendAiTrace(data.trace)
+      }
+      if (!data.move) return
+
+      appendAiTrace([
+        `[frontend] AI返回 engine=${data.engine ?? 'builtin'} move=${data.move.from.row},${data.move.from.col}->${data.move.to.row},${data.move.to.col}`,
+      ])
+
+      const currentGame = latestGameRef.current
+      if (currentGame !== snapshot) return
+
+      const next = playMove(currentGame, data.move.from, data.move.to)
+      if (next === currentGame) return
+
+      const thinkMs = Math.max(1, nowMs() - turnStartAtRef.current)
+      const movedId = next.board[data.move.to.row]?.[data.move.to.col]
+      const pieceText = movedId ? getPieceLabel(next.pieces[movedId]) : '子'
+
+      setGame(next)
+      const nextTimeline = [...latestTimelineRef.current, cloneGameState(next)]
+      setTimeline(nextTimeline)
+      setReplayIndex(nextTimeline.length - 1)
+      turnStartAtRef.current = nowMs()
+      setDrawOfferBySide({ red: false, black: false })
+
+      const logItem: MoveLogItem = {
+        id: next.moveCount,
+        side: data.side,
+        actor: 'ai',
+        aiEngine: data.engine ?? 'builtin',
+        pieceText,
+        from: { ...data.move.from },
+        to: { ...data.move.to },
+        thinkMs,
+      }
+      setMoveLogs((prev) => {
+        const nextLogs = [...prev, logItem]
+        setLastThinkBySide(computeLastThinkMap(nextLogs))
+        return nextLogs
       })
+
+      if (!soundOnRef.current) return
+
+      const capture = aliveCount(next) < aliveCount(currentGame)
+      const checkedNow = next.message.includes('被将军') && !currentGame.message.includes('被将军')
+      const wonNow = !currentGame.winner && !!next.winner
+
+      if (wonNow) {
+        void playSound('win')
+      } else if (checkedNow) {
+        void playSound('check')
+      } else if (capture) {
+        void playSound('capture')
+      } else {
+        void playSound('move')
+      }
+    }
+
+    void searchPromise
       .then((data) => {
         if (searchToken !== aiSearchTokenRef.current) return
-        if (!data.move) return
-
-        const currentGame = latestGameRef.current
-        if (currentGame !== snapshot) return
-
-        const next = playMove(currentGame, data.move.from, data.move.to)
-        if (next === currentGame) return
-
-        const thinkMs = Math.max(1, nowMs() - turnStartAtRef.current)
-        const movedId = next.board[data.move.to.row]?.[data.move.to.col]
-        const pieceText = movedId ? getPieceLabel(next.pieces[movedId]) : '子'
-
-        setGame(next)
-        const nextTimeline = [...latestTimelineRef.current, cloneGameState(next)]
-        setTimeline(nextTimeline)
-        setReplayIndex(nextTimeline.length - 1)
-        turnStartAtRef.current = nowMs()
-        setDrawOfferBySide({ red: false, black: false })
-
-        const logItem: MoveLogItem = {
-          id: next.moveCount,
-          side: data.side,
-          actor: 'ai',
-          pieceText,
-          from: { ...data.move.from },
-          to: { ...data.move.to },
-          thinkMs,
+        if (data.trace?.length) {
+          appendAiTrace(data.trace)
         }
-        setMoveLogs((prev) => {
-          const nextLogs = [...prev, logItem]
-          setLastThinkBySide(computeLastThinkMap(nextLogs))
-          return nextLogs
-        })
-
-        if (!soundOnRef.current) return
-
-        const capture = aliveCount(next) < aliveCount(currentGame)
-        const checkedNow = next.message.includes('被将军') && !currentGame.message.includes('被将军')
-        const wonNow = !currentGame.winner && !!next.winner
-
-        if (wonNow) {
-          void playSound('win')
-        } else if (checkedNow) {
-          void playSound('check')
-        } else if (capture) {
-          void playSound('capture')
-        } else {
-          void playSound('move')
+        if (!data.move) {
+          const shouldReportPikafish = pikafishEnabled && (aiProviderMode === 'auto' || aiProviderMode === 'http')
+          if (shouldReportPikafish) {
+            handlePikafishFailure('引擎未返回可用走子', data.trace)
+          }
+          return
         }
+
+        aiRetryCountRef.current[side] = 0
+        if (pikafishEnabled && data.engine === 'pikafish') {
+          setLocalAiLockMessage('')
+        } else if (pikafishEnabled && data.engine === 'builtin') {
+          setLocalAiLockMessage(`${sideText(side)}Pikafish当前不可用，已回退本地AI`)
+        }
+        applyAiResult(data)
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (searchToken !== aiSearchTokenRef.current) return
+
+        const traceLines =
+          typeof error === 'object' &&
+          error !== null &&
+          'trace' in error &&
+          Array.isArray((error as { trace?: unknown }).trace)
+            ? (error as { trace: string[] }).trace
+            : []
+
+        const shouldReportPikafish = pikafishEnabled && (aiProviderMode === 'auto' || aiProviderMode === 'http')
+        if (shouldReportPikafish) {
+          const detailText = error instanceof Error && error.message ? error.message : '未知错误'
+          handlePikafishFailure(detailText, traceLines)
+          return
+        }
+
+        const detailText = error instanceof Error && error.message ? error.message : '未知错误'
+        appendAiTrace(traceLines)
+        appendAiTrace([`[frontend] AI请求失败：${detailText}`])
       })
-  }, [isServerMode, aiEnabledBySide, isReplayMode, game, aiDepthBySide, aiTimeBudgetBySide])
+  }, [
+    isServerMode,
+    aiEnabledBySide,
+    aiPikafishEnabledBySide,
+    isReplayMode,
+    game,
+    aiDepthBySide,
+    aiTimeBudgetBySide,
+    aiPikafishMaxThinkBySide,
+    aiProviderMode,
+    aiSearchRetryTick,
+    appendAiTrace,
+  ])
 
   return (
     <div className="page">
@@ -1658,6 +1926,27 @@ function App() {
                   <button type="button" onClick={() => toggleAiForSide('red')}>
                     红方AI：{aiEnabledBySide.red ? '开' : '关'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleAiNoFallbackForSide('red')}
+                    disabled={aiProviderMode === 'worker'}
+                  >
+                    红方Pikafish：{aiPikafishEnabledBySide.red ? '开' : '关'}
+                  </button>
+                  <label className="ai-budget" aria-label="红方Pikafish最长思考时长">
+                    <span>红Pika上限</span>
+                    <select
+                      value={aiPikafishMaxThinkBySide.red}
+                      onChange={(event) => updatePikafishMaxThink('red', event.target.value)}
+                      disabled={!aiPikafishEnabledBySide.red || aiProviderMode === 'worker'}
+                    >
+                      {PIKAFISH_MAX_THINK_OPTIONS.map((ms) => (
+                        <option key={`red-pika-max-${ms}`} value={ms}>
+                          {ms / 1000}秒
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <button type="button" onClick={() => toggleDrawOffer('red')} disabled={isReplayMode || !!game.winner || game.isDraw}>
                     {drawOfferBySide.red ? '红方取消提和' : '红方提和'}
                   </button>
@@ -1670,9 +1959,13 @@ function App() {
                       +
                     </button>
                   </div>
-                  <label className="ai-budget" aria-label="红方AI思考时限">
-                    <span>红时限</span>
-                    <select value={aiTimeBudgetBySide.red} onChange={(event) => updateAiBudget('red', event.target.value)}>
+                  <label className="ai-budget" aria-label="红方本地AI思考时限">
+                    <span>红本地时限</span>
+                    <select
+                      value={aiTimeBudgetBySide.red}
+                      onChange={(event) => updateAiBudget('red', event.target.value)}
+                      disabled={aiPikafishEnabledBySide.red && aiProviderMode !== 'worker'}
+                    >
                       {AI_TIME_BUDGET_OPTIONS.map((ms) => (
                         <option key={ms} value={ms}>
                           {ms / 1000}秒
@@ -1683,6 +1976,27 @@ function App() {
                   <button type="button" onClick={() => toggleAiForSide('black')}>
                     黑方AI：{aiEnabledBySide.black ? '开' : '关'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleAiNoFallbackForSide('black')}
+                    disabled={aiProviderMode === 'worker'}
+                  >
+                    黑方Pikafish：{aiPikafishEnabledBySide.black ? '开' : '关'}
+                  </button>
+                  <label className="ai-budget" aria-label="黑方Pikafish最长思考时长">
+                    <span>黑Pika上限</span>
+                    <select
+                      value={aiPikafishMaxThinkBySide.black}
+                      onChange={(event) => updatePikafishMaxThink('black', event.target.value)}
+                      disabled={!aiPikafishEnabledBySide.black || aiProviderMode === 'worker'}
+                    >
+                      {PIKAFISH_MAX_THINK_OPTIONS.map((ms) => (
+                        <option key={`black-pika-max-${ms}`} value={ms}>
+                          {ms / 1000}秒
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <button type="button" onClick={() => toggleDrawOffer('black')} disabled={isReplayMode || !!game.winner || game.isDraw}>
                     {drawOfferBySide.black ? '黑方取消提和' : '黑方提和'}
                   </button>
@@ -1695,9 +2009,13 @@ function App() {
                       +
                     </button>
                   </div>
-                  <label className="ai-budget" aria-label="黑方AI思考时限">
-                    <span>黑时限</span>
-                    <select value={aiTimeBudgetBySide.black} onChange={(event) => updateAiBudget('black', event.target.value)}>
+                  <label className="ai-budget" aria-label="黑方本地AI思考时限">
+                    <span>黑本地时限</span>
+                    <select
+                      value={aiTimeBudgetBySide.black}
+                      onChange={(event) => updateAiBudget('black', event.target.value)}
+                      disabled={aiPikafishEnabledBySide.black && aiProviderMode !== 'worker'}
+                    >
                       {AI_TIME_BUDGET_OPTIONS.map((ms) => (
                         <option key={ms} value={ms}>
                           {ms / 1000}秒
@@ -1870,9 +2188,23 @@ function App() {
                   <div>
                     {isServerMode
                       ? `在线：${activeMatch ? `${activeMatch.mode} · ${activeMatch.status} · ${isMyServerTurn ? '轮到你走' : '等待对手/AI'}` : '未选择对局'}`
-                      : `提和：红方${drawOfferBySide.red ? '已提' : '未提'} / 黑方${drawOfferBySide.black ? '已提' : '未提'}`}
+                      : `提和：红方${drawOfferBySide.red ? '已提' : '未提'} / 黑方${drawOfferBySide.black ? '已提' : '未提'} ｜ 当前AI来源：${localAiSourceSummary}`}
                   </div>
                 </div>
+                {!isServerMode && localAiLockProbeMessage && <div className="server-row">{localAiLockProbeMessage}</div>}
+                {!isServerMode && localAiLockMessage && <div className="server-row">{localAiLockMessage}</div>}
+                {!isServerMode && aiInteractionTrace.length > 0 && (
+                  <details className="insights-panel">
+                    <summary>AI链路追踪（最近{aiInteractionTrace.length}条）</summary>
+                    <section className="insights">
+                      <div className="move-list">
+                        {[...aiInteractionTrace].reverse().map((line, index) => (
+                          <div key={`trace-${index}`}>{line}</div>
+                        ))}
+                      </div>
+                    </section>
+                  </details>
+                )}
               </section>
 
               <details className="insights-panel">
@@ -1902,7 +2234,7 @@ function App() {
                       <div className="last-row">
                         对手上一步：
                         {opponentLastMove
-                          ? `${sideText(opponentLastMove.side)} ${opponentLastMove.pieceText} ${posText(opponentLastMove.from)}→${posText(opponentLastMove.to)}（${actorText(opponentLastMove.actor)} ${formatDurationMs(opponentLastMove.thinkMs)}）`
+                          ? `${sideText(opponentLastMove.side)} ${opponentLastMove.pieceText} ${posText(opponentLastMove.from)}→${posText(opponentLastMove.to)}（${opponentLastMove.actor === 'ai' ? `AI(${aiEngineText(opponentLastMove.aiEngine)})` : actorText(opponentLastMove.actor)} ${formatDurationMs(opponentLastMove.thinkMs)}）`
                           : '暂无'}
                       </div>
                     </>
@@ -1911,7 +2243,7 @@ function App() {
                     <div className="move-list">
                       {recentMoves.map((log) => (
                         <div key={`${log.id}-${log.side}-${log.from.row}-${log.from.col}`}>
-                          {log.id}. {sideText(log.side)} {log.pieceText} {posText(log.from)}→{posText(log.to)} · {actorText(log.actor)}
+                          {log.id}. {sideText(log.side)} {log.pieceText} {posText(log.from)}→{posText(log.to)} · {log.actor === 'ai' ? `AI(${aiEngineText(log.aiEngine)})` : actorText(log.actor)}
                           {!isServerMode ? ` · ${formatDurationMs(log.thinkMs)}` : ''}
                         </div>
                       ))}
@@ -1953,6 +2285,9 @@ function App() {
           </div>
           <div>红方思考：{formatThinkMs(liveThinkBySide.red)} · 黑方思考：{formatThinkMs(liveThinkBySide.black)}</div>
           <div>红方总时长：{formatDurationMs(liveThinkTotals.red)} · 黑方总时长：{formatDurationMs(liveThinkTotals.black)}</div>
+          {!isServerMode && <div>当前AI来源：{localAiSourceSummary}</div>}
+          {!isServerMode && localAiLockProbeMessage && <div>{localAiLockProbeMessage}</div>}
+          {!isServerMode && localAiLockMessage && <div>{localAiLockMessage}</div>}
           {isServerMode && <div>{activeMatch ? `在线：${activeMatch.mode} · ${activeMatch.status} · ${isMyServerTurn ? '轮到你走' : '等待对手/AI'}` : '在线：未选择对局'}</div>}
         </section>
       )}

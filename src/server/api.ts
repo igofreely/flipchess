@@ -8,7 +8,7 @@ const inferApiBase = () => {
   return `${protocol}//${window.location.hostname}:3001/api`
 }
 
-const API_BASE = (import.meta.env.VITE_SERVER_API_BASE as string | undefined) ?? inferApiBase()
+export const SERVER_API_BASE = (import.meta.env.VITE_SERVER_API_BASE as string | undefined) ?? inferApiBase()
 
 export interface ServerUser {
   id: string
@@ -22,12 +22,14 @@ export interface ServerMatchSide {
   username?: string | null
   aiDepth: number
   aiTimeBudgetMs: number
+  aiEngine?: 'pikafish' | 'builtin'
 }
 
 export interface ServerMoveRecord {
   ply: number
   side: Side
   actor: 'user' | 'ai'
+  aiEngine?: 'pikafish' | 'builtin'
   from: Position
   to: Position
   pieceText: string
@@ -75,7 +77,7 @@ const request = async <T>(path: string, init?: RequestInit, token?: string): Pro
   }
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${SERVER_API_BASE}${path}`, {
     ...init,
     headers,
   })
