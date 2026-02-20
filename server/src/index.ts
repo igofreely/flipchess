@@ -883,9 +883,31 @@ app.post('/api/matches/:matchId/undo-request', requireAuth, async (req: Authenti
 
   const action = String(req.body?.action ?? '') as 'request' | 'cancel' | 'accept' | 'reject' | ''
 
+  const hasAiSide = match.red.type === 'ai' || match.black.type === 'ai'
+
   if (!match.undoRequest) {
     if (action === 'accept' || action === 'reject' || action === 'cancel') {
       res.status(400).json({ message: 'No pending undo request' })
+      return
+    }
+    // When AI is involved, directly undo without request/accept flow
+    if (hasAiSide) {
+      match.moves = match.moves.slice(0, -1)
+      const rebuilt = rebuildStateFromMoves(match)
+      if (!rebuilt) {
+        res.status(500).json({ message: 'Failed to rebuild match state after undo' })
+        return
+      }
+      match.status = 'ongoing'
+      match.result = null
+      match.termination = null
+      clearNegotiationState(match)
+      match.updatedAt = new Date().toISOString()
+      await store.upsertMatch(match)
+      if (match.status === 'ongoing' && currentSideSlot(match).type === 'ai') {
+        scheduleAiTurnIfNeeded(match.id, MIN_AI_MOVE_INTERVAL_MS)
+      }
+      res.json({ match: await normalizeMatchForResponse(match) })
       return
     }
     match.undoRequest = { fromSide: side, requestedAt: new Date().toISOString() }

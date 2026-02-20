@@ -1210,12 +1210,15 @@ function App() {
       const data = await serverApi.undoRequest(serverToken, activeMatch.id, action)
       applyServerMatch(data.match)
       await refreshRankings()
+      const hasAi = activeMatch.red.type === 'ai' || activeMatch.black.type === 'ai'
       if (action === 'accept') {
         setServerMessage('已同意悔棋')
       } else if (action === 'reject') {
         setServerMessage('已拒绝悔棋请求')
       } else if (action === 'cancel') {
         setServerMessage('已取消悔棋请求')
+      } else if (hasAi) {
+        setServerMessage('已悔棋')
       } else {
         setServerMessage('已发起悔棋请求')
       }
@@ -2101,7 +2104,15 @@ function App() {
                   >
                     {activeMatch && myServerSide && activeMatch.drawOfferBySide[myServerSide] ? '取消提和' : '提和'}
                   </button>
-                  {activeMatch && activeMatch.undoRequest ? (
+                  {activeMatch && (activeMatch.red.type === 'ai' || activeMatch.black.type === 'ai') ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleServerUndoAction('request')}
+                      disabled={!activeMatch || !myServerSide || activeMatch.status !== 'ongoing'}
+                    >
+                      悔棋
+                    </button>
+                  ) : activeMatch && activeMatch.undoRequest ? (
                     activeMatch.undoRequest.fromSide === myServerSide ? (
                       <button
                         type="button"
