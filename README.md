@@ -4,7 +4,7 @@
 
 ## 主要功能
 
-- 客户端揭棋对局（AI、音效、复盘、PGN 导入导出）
+- 客户端揭棋对局（AI、音效、复盘、FEN 导入导出）
 - 服务器账号体系（注册/登录/JWT）
 - 服务器对局管理（PVP / VS AI / AI VS AI）
 - 平台统计与排行榜
@@ -88,26 +88,88 @@ npm run test:local
 
 ---
 
-## 一键部署到服务器
+## 编译、提交与部署
 
-使用 `scripts/deploy.sh` 可在本地一键完成：构建 → 打包 → 上传 → 远程安装依赖 → 编译 Pikafish → 启动服务 → 配置 nginx → 健康检查。
+日常开发的完整流程：**编辑代码 → 本地构建验证 → Git 提交推送 → 一键部署到服务器**。
 
-> 所有文件（源码、Pikafish 源码、NNUE 模型）均从本地上传，**不依赖服务器访问 GitHub**。
-
-### 快速使用
+### 1) 本地编译（构建前端产物）
 
 ```bash
-# 默认部署到 ds.hookapp.top（密码登录需 sshpass）
+npm run build
+```
+
+- 使用 Vite 将 `src/` 下的 TypeScript + React 代码编译为 `dist/` 静态资源。
+- 构建前会自动做类型检查，有报错则终止。
+- 构建产物用于服务器的 nginx 静态托管。
+
+### 2) Git 提交与推送
+
+```bash
+# 查看改动
+git status
+git diff
+
+# 暂存 → 提交 → 推送
+git add -A
+git commit -m "描述本次改动"
+git push
+```
+
+- 仓库远程地址：`ssh://c.f22.fun:2222/root/Code.git`（master 分支）。
+- 提交前建议先 `npm run build` 确认编译无误。
+
+### 3) 一键部署到服务器
+
+使用 `scripts/deploy.sh` 在本地一键完成：构建 → 上传 → 远程重启服务 → 健康检查。
+
+> 所有文件均从本地上传，**不依赖服务器访问 GitHub**。
+
+#### 增量部署（默认，推荐）
+
+```bash
+# 密码登录（需 sshpass）
 DEPLOY_PASSWORD=your_password bash scripts/deploy.sh
 
-# 自定义主机
-DEPLOY_HOST=1.2.3.4 DEPLOY_PASSWORD=xxx bash scripts/deploy.sh
-
-# 已配置 SSH 密钥则无需 DEPLOY_PASSWORD
+# 已配置 SSH 密钥则无需密码
 bash scripts/deploy.sh
 ```
 
-### 可配置环境变量
+**流程**（4 步）：
+1. 本地 `npm run build` 编译前端
+2. **rsync 增量同步** — 只上传有变化的文件，跳过 `node_modules`、`.git`、NNUE 模型等大文件
+3. 远程重启 — 智能检测 `package.json` 是否变化，无变化则跳过 `npm install`；PM2 重启后端
+4. 健康检查 — 验证 API / HTTP / HTTPS 均正常
+
+增量部署通常只传几百 KB，耗时数秒（相比全量的 ~113 MB）。
+
+#### 全量部署（首次部署或大幅变更时）
+
+```bash
+DEPLOY_PASSWORD=your_password bash scripts/deploy.sh --full
+```
+
+**流程**（6 步）：
+1. 本地 `npm run build` 编译前端
+2. `tar.gz` 打包整个项目（排除 `node_modules`、`.git`）
+3. scp 上传 tar 包 + Pikafish 源码 + NNUE 模型 + nginx 配置
+4. 远程解压 → `npm install` → 编译 Pikafish → PM2 重启
+5. 配置 nginx（80/443/33333 三端口）
+6. 健康检查
+
+#### 自定义主机
+
+```bash
+DEPLOY_HOST=1.2.3.4 DEPLOY_PASSWORD=xxx bash scripts/deploy.sh
+```
+
+#### 典型日常工作流（一行命令）
+
+```bash
+# 改完代码，一条命令搞定：提交 + 推送 + 部署
+git add -A && git commit -m "fix: 修复xxx" && git push && DEPLOY_PASSWORD=your_password bash scripts/deploy.sh
+```
+
+### 部署可配置环境变量
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
@@ -281,7 +343,7 @@ tail -n 100 /var/log/flipchess/cert-renew.log
 
 ---
 
-## 构建与预览
+## 代码检查与本地预览
 
 ```bash
 npm run lint && npm run build
