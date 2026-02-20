@@ -394,6 +394,7 @@ function App() {
   const [serverSessionHydrating, setServerSessionHydrating] = useState(() => !!localStorage.getItem(SERVER_TOKEN_KEY))
   const [serverMatches, setServerMatches] = useState<ServerMatch[]>([])
   const [activeMatchId, setActiveMatchId] = useState<string | null>(() => localStorage.getItem(ACTIVE_MATCH_KEY))
+  const [showAllMatches, setShowAllMatches] = useState(false)
   const [rankings, setRankings] = useState<RankingItem[]>([])
   const [authUsername, setAuthUsername] = useState('')
   const [authPassword, setAuthPassword] = useState('')
@@ -1927,31 +1928,44 @@ function App() {
                       />
                     </div>
                     <div className="server-row list">
-                      <span>我的对局：</span>
-                      <div className="server-list">
-                        {serverMatches.map((item) => (
-                          <div key={item.id} className="server-match-item">
-                            <button
-                              type="button"
-                              className={item.id === activeMatchId ? 'active' : ''}
-                              onClick={() => {
-                                void openMatch(item.id)
-                              }}
-                            >
-                              {item.mode} · {item.status} · {item.id.slice(0, 6)}
-                            </button>
-                            <button
-                              type="button"
-                              className="danger"
-                              onClick={() => {
-                                void handleDeleteMatch(item.id)
-                              }}
-                              title="删除该对局"
-                            >
-                              删除
-                            </button>
-                          </div>
-                        ))}
+                      <span>对局记录（{serverMatches.length}）：</span>
+                      <div className="match-history-list">
+                        {(() => {
+                          const sorted = [...serverMatches].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+                          const visible = showAllMatches ? sorted : sorted.slice(0, 5)
+                          const hiddenCount = sorted.length - 5
+                          return (
+                            <>
+                              {visible.map((item) => {
+                                const redLabel = item.red.type === 'user' ? (item.red.username ?? '玩家') : `AI(${aiEngineText(item.red.aiEngine)})`
+                                const blackLabel = item.black.type === 'user' ? (item.black.username ?? '玩家') : `AI(${aiEngineText(item.black.aiEngine)})`
+                                const statusLabel = item.status === 'finished'
+                                  ? item.result === 'red' ? '红胜' : item.result === 'black' ? '黑胜' : item.result === 'draw' ? '平局' : '已结束'
+                                  : '进行中'
+                                return (
+                                  <div key={item.id} className={`match-history-card${item.id === activeMatchId ? ' active' : ''}`}>
+                                    <div className="match-history-main" onClick={() => void openMatch(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') void openMatch(item.id) }}>
+                                      <span className="match-history-sides">红 {redLabel} vs 黑 {blackLabel}</span>
+                                      <span className={`match-history-status ${item.status}`}>{statusLabel}</span>
+                                      <span className="match-history-time">开始 {formatDateTime(item.createdAt)}{item.status === 'finished' ? ` · 结束 ${formatDateTime(item.updatedAt)}` : ''}</span>
+                                    </div>
+                                    <button type="button" className="danger" onClick={() => void handleDeleteMatch(item.id)} title="删除该对局">删除</button>
+                                  </div>
+                                )
+                              })}
+                              {!showAllMatches && hiddenCount > 0 && (
+                                <button type="button" className="match-history-expand" onClick={() => setShowAllMatches(true)}>
+                                  展开更早的 {hiddenCount} 个对局
+                                </button>
+                              )}
+                              {showAllMatches && sorted.length > 5 && (
+                                <button type="button" className="match-history-expand" onClick={() => setShowAllMatches(false)}>
+                                  收起
+                                </button>
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
                     </div>
                   </>
