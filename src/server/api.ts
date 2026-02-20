@@ -23,6 +23,7 @@ export interface ServerMatchSide {
   aiDepth: number
   aiTimeBudgetMs: number
   aiEngine?: 'pikafish' | 'builtin'
+  aiPikafishMaxThinkMs?: number
 }
 
 export interface ServerMoveRecord {
@@ -125,8 +126,9 @@ export const serverApi = {
       aiSide?: Side
       aiDepthBySide?: Partial<Record<Side, number>>
       aiTimeBudgetBySide?: Partial<Record<Side, number>>
-      pgnSetup?: GameState
-      pgnMoves?: Array<{ from: Position; to: Position }>
+      aiEngineBySide?: Partial<Record<Side, 'pikafish' | 'builtin'>>
+      aiPikafishMaxThinkBySide?: Partial<Record<Side, number>>
+      fenSetup?: GameState
     },
   ) {
     return request<{ match: ServerMatch }>('/matches', { method: 'POST', body: JSON.stringify(payload) }, token)
@@ -140,6 +142,8 @@ export const serverApi = {
     payload: {
       aiDepthBySide?: Partial<Record<Side, number>>
       aiTimeBudgetBySide?: Partial<Record<Side, number>>
+      aiEngineBySide?: Partial<Record<Side, 'pikafish' | 'builtin'>>
+      aiPikafishMaxThinkBySide?: Partial<Record<Side, number>>
     },
   ) {
     return request<{ match: ServerMatch }>(`/matches/${matchId}/ai-config`, { method: 'PATCH', body: JSON.stringify(payload) }, token)

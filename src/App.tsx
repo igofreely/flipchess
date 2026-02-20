@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import './App.css'
 import { createInitialGame, getPieceLabel, playMove, selectCell } from './game/engine'
-import type { GameState, Position, Side } from './game/types'
+import type { GameState, Piece, PieceType, Position, Side } from './game/types'
 import { createWorkerAiProvider, type AiProvider } from './game/ai-provider'
 import { createHttpAiProvider } from './game/ai-provider-http'
 import { SERVER_API_BASE, serverApi, type RankingItem, type ServerMatch, type ServerUser } from './server/api'
@@ -84,33 +84,6 @@ const swapLocalGameStateSides = (state: GameState): GameState => {
 
 const posText = (pos: Position) => `(${pos.row},${pos.col})`
 
-const pgnSquareText = (pos: Position) => {
-  const files = 'abcdefghi'
-  return `${files[pos.col]}${9 - pos.row}`
-}
-
-const pgnResultText = (state: GameState) => {
-  if (state.winner === 'red') return '1-0'
-  if (state.winner === 'black') return '0-1'
-  if (state.isDraw) return '1/2-1/2'
-  return '*'
-}
-
-const pgnDateText = () => new Date().toISOString().slice(0, 10).replace(/-/g, '.')
-
-const sanitizePgnTag = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-
-const unescapePgnTag = (value: string) => value.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
-
-const encodeBase64Utf8 = (text: string) => {
-  const bytes = new TextEncoder().encode(text)
-  let binary = ''
-  bytes.forEach((b) => {
-    binary += String.fromCharCode(b)
-  })
-  return btoa(binary)
-}
-
 const decodeBase64Utf8 = (base64: string) => {
   const binary = atob(base64)
   const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
@@ -140,12 +113,157 @@ const getUserSideInMatch = (match: ServerMatch, userId: string | null): Side | n
   return null
 }
 
-const extractPgnTagValue = (content: string, tag: string): string | null => {
-  const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const regex = new RegExp(`\\[${escapedTag}\\s+"((?:\\\\.|[^"])*)"\\]`, 'i')
-  const match = content.match(regex)
-  if (!match?.[1]) return null
-  return unescapePgnTag(match[1])
+const FEN_PIECE_TYPES: Record<string, PieceType> = {
+  k: 'king', a: 'advisor', b: 'elephant', n: 'horse', r: 'rook', c: 'cannon', p: 'pawn',
+}
+
+const PIECE_TO_FEN: Record<PieceType, string> = {
+  king: 'k', advisor: 'a', elephant: 'b', horse: 'n', rook: 'r', cannon: 'c', pawn: 'p',
+}
+
+const gameStateToFen = (state: GameState): string => {
+  const rows: string[] = []
+  for (let row = 0; row < 10; row += 1) {
+    let fenRow = ''
+    let emptyCount = 0
+    for (let col = 0; col < 9; col += 1) {
+      const id = state.board[row][col]
+      if (!id) { emptyCount += 1; continue }
+      if (emptyCount > 0) { fenRow += String(emptyCount); emptyCount = 0 }
+      const piece = state.pieces[id]
+      if (!piece) { fenRow += '1'; continue }
+      if (!piece.isRevealed) {
+        fenRow += piece.side === 'red' ? 'X' : 'x'
+      } else {
+        const base = PIECE_TO_FEN[piece.realType] ?? 'p'
+        fenRow += piece.side === 'red' ? base.toUpperCase() : base
+      }
+    }
+    if (emptyCount > 0) fenRow += String(emptyCount)
+    rows.push(fenRow)
+  }
+
+  // pool: unrevealed alive pieces
+  const counts = new Map<string, number>()
+  for (const piece of Object.values(state.pieces)) {
+    if (!piece.alive || piece.isRevealed) continue
+    const lower = PIECE_TO_FEN[piece.realType] ?? 'p'
+    const key = piece.side === 'red' ? lower.toUpperCase() : lower
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const poolOrder = ['A', 'B', 'N', 'R', 'C', 'P', 'a', 'b', 'n', 'r', 'c', 'p']
+  const poolParts: string[] = []
+  for (const k of poolOrder) {
+    const n = counts.get(k) ?? 0
+    if (n > 0) poolParts.push(`${k}${n}`)
+  }
+  const poolText = poolParts.join('') || '-'
+  const sideText = state.turn === 'red' ? 'w' : 'b'
+  const halfmove = Math.max(0, Math.floor(state.quietMoveCount))
+  const fullmove = Math.max(1, Math.floor(state.moveCount / 2) + 1)
+
+  return `${rows.join('/')} ${sideText} ${poolText} ${halfmove} ${fullmove}`
+}
+
+const fenToGameState = (fen: string): GameState | null => {
+  const parts = fen.trim().split(/\s+/)
+  if (parts.length < 3) return null
+
+  const boardPart = parts[0]
+  const sidePart = parts[1]
+  const poolPart = parts[2]
+  const halfmove = parts.length > 3 ? Number(parts[3]) : 0
+  const fullmove = parts.length > 4 ? Number(parts[4]) : 1
+
+  const turn: Side = sidePart === 'b' ? 'black' : 'red'
+  const boardRows = boardPart.split('/')
+  if (boardRows.length !== 10) return null
+
+  // Parse pool into type arrays per side
+  const redPool: PieceType[] = []
+  const blackPool: PieceType[] = []
+  if (poolPart !== '-') {
+    const poolTokens = [...poolPart.matchAll(/([A-Za-z])(\d+)/g)]
+    for (const tok of poolTokens) {
+      const ch = tok[1]
+      const count = Number(tok[2])
+      const isRed = ch === ch.toUpperCase()
+      const pieceType = FEN_PIECE_TYPES[ch.toLowerCase()]
+      if (!pieceType) return null
+      const target = isRed ? redPool : blackPool
+      for (let i = 0; i < count; i++) target.push(pieceType)
+    }
+    // Shuffle pools so hidden piece assignment is random
+    for (const pool of [redPool, blackPool]) {
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]]
+      }
+    }
+  }
+
+  const board: (string | null)[][] = Array.from({ length: 10 }, () => Array(9).fill(null) as (string | null)[])
+  const pieces: Record<string, Piece> = {}
+  let pieceIdx = 0
+  let redPoolIdx = 0
+  let blackPoolIdx = 0
+
+  for (let row = 0; row < 10; row += 1) {
+    let col = 0
+    for (const ch of boardRows[row]) {
+      if (col >= 9) break
+      if (ch >= '1' && ch <= '9') {
+        col += Number(ch)
+        continue
+      }
+
+      const pos: Position = { row, col }
+      const id = `fen-${pieceIdx++}`
+
+      if (ch === 'X' || ch === 'x') {
+        const side: Side = ch === 'X' ? 'red' : 'black'
+        const pool = side === 'red' ? redPool : blackPool
+        const poolIdx = side === 'red' ? redPoolIdx : blackPoolIdx
+        const realType = pool[poolIdx] ?? 'pawn'
+        if (side === 'red') redPoolIdx++; else blackPoolIdx++
+        pieces[id] = {
+          id, side, realType,
+          bornType: realType,
+          isRevealed: false,
+          bornPos: { ...pos }, currentPos: { ...pos },
+          alive: true,
+        }
+      } else {
+        const isRed = ch === ch.toUpperCase()
+        const side: Side = isRed ? 'red' : 'black'
+        const pieceType = FEN_PIECE_TYPES[ch.toLowerCase()]
+        if (!pieceType) return null
+        pieces[id] = {
+          id, side, realType: pieceType,
+          bornType: pieceType,
+          isRevealed: true,
+          bornPos: { ...pos }, currentPos: { ...pos },
+          alive: true,
+        }
+      }
+      board[row][col] = id
+      col += 1
+    }
+  }
+
+  const moveCount = Math.max(0, (fullmove - 1) * 2 + (turn === 'black' ? 1 : 0))
+
+  const state: GameState = {
+    board, pieces, turn,
+    selected: null, legalMoves: [],
+    winner: null, isDraw: false,
+    quietMoveCount: Number.isFinite(halfmove) ? halfmove : 0,
+    moveCount: Number.isFinite(moveCount) ? moveCount : 0,
+    message: turn === 'red' ? '轮到红方' : '轮到黑方',
+    positionHistory: [],
+    checkHistory: [],
+  }
+  return state
 }
 
 const isGameStateLike = (value: unknown): value is GameState => {
@@ -161,37 +279,7 @@ const isGameStateLike = (value: unknown): value is GameState => {
   )
 }
 
-const parsePgnSquareText = (text: string): Position | null => {
-  const normalized = text.trim().toLowerCase()
-  if (!/^[a-i][0-9]$/.test(normalized)) return null
 
-  const files = 'abcdefghi'
-  const col = files.indexOf(normalized[0])
-  const rank = Number(normalized[1])
-  const row = 9 - rank
-
-  if (col < 0 || rank < 0 || rank > 9 || row < 0 || row > 9) return null
-  return { row, col }
-}
-
-const extractPgnMoves = (content: string): Array<{ from: Position; to: Position }> => {
-  const plain = content
-    .replace(/\{[^}]*\}/g, ' ')
-    .replace(/;.*$/gm, ' ')
-    .replace(/\[[^\]]*\]/g, ' ')
-
-  const tokens = [...plain.matchAll(/([a-i][0-9])\s*-\s*([a-i][0-9])/gi)]
-  const parsed: Array<{ from: Position; to: Position }> = []
-
-  for (const token of tokens) {
-    const from = parsePgnSquareText(token[1])
-    const to = parsePgnSquareText(token[2])
-    if (!from || !to) continue
-    parsed.push({ from, to })
-  }
-
-  return parsed
-}
 
 const formatDurationMs = (ms: number) => `${(Math.max(0, ms) / 1000).toFixed(1)}s`
 const formatThinkMs = (ms: number | null) => (ms === null ? '--' : formatDurationMs(ms))
@@ -325,13 +413,14 @@ function App() {
   const aiSearchTokenRef = useRef(0)
   const aiRetryCountRef = useRef<Record<Side, number>>({ red: 0, black: 0 })
   const [aiSearchRetryTick, setAiSearchRetryTick] = useState(0)
-  const pgnInputRef = useRef<HTMLInputElement | null>(null)
-  const serverPgnInputRef = useRef<HTMLInputElement | null>(null)
+  const fenInputRef = useRef<HTMLInputElement | null>(null)
+  const serverFenInputRef = useRef<HTMLInputElement | null>(null)
   const turnStartAtRef = useRef(0)
   const latestGameRef = useRef(game)
   const latestTimelineRef = useRef(timeline)
   const soundOnRef = useRef(soundOn)
   const activeServerMatchRef = useRef<ServerMatch | null>(null)
+  const activeMatchIdRef = useRef(activeMatchId)
   const serverBootstrapRequestRef = useRef(0)
   const boardRef = useRef<HTMLDivElement | null>(null)
   const cellRefs = useRef<Record<string, HTMLButtonElement | null>>({})
@@ -369,35 +458,38 @@ function App() {
     black: !aiEnabledBySide.black ? 'AI关闭' : localLastAiEngineBySide.black ? aiEngineText(localLastAiEngineBySide.black) : '未触发',
   }
   const localAiSourceSummary = `红方${localAiSourceBySide.red} / 黑方${localAiSourceBySide.black}`
-  const statusRedPlayer = isServerMode
-    ? activeMatch
-      ? activeMatch.red.type === 'user'
-        ? activeMatch.red.username ?? '未知用户'
-        : `AI(${aiEngineText(activeMatch.red.aiEngine)})`
-      : '--'
-    : localPlayerText(aiEnabledBySide.red, localLastAiEngineBySide.red)
-  const statusBlackPlayer = isServerMode
-    ? activeMatch
-      ? activeMatch.black.type === 'user'
-        ? activeMatch.black.username ?? '未知用户'
-        : `AI(${aiEngineText(activeMatch.black.aiEngine)})`
-      : '--'
-    : localPlayerText(aiEnabledBySide.black, localLastAiEngineBySide.black)
-  const statusSummaryText = `提和状态：红${statusDrawBySide.red ? '已提' : '未提'} / 黑${statusDrawBySide.black ? '已提' : '未提'} ｜ 悔棋请求：${statusUndoText} ｜ 双方：红方${statusRedPlayer} / 黑方${statusBlackPlayer}`
   const aiThinkingSide: Side | null = !isReplayMode && !game.winner && !game.isDraw && aiEnabledBySide[game.turn] ? game.turn : null
-  const useCreateAiConfig = createMode === 'ai_vs_ai' || createMode === 'vs_ai'
   const serverAiEnabledBySide: Record<Side, boolean> = {
     red: createMode === 'ai_vs_ai' ? true : createMode === 'vs_ai' ? createAiSide === 'red' : activeMatch ? activeMatch.red.type === 'ai' : true,
     black: createMode === 'ai_vs_ai' ? true : createMode === 'vs_ai' ? createAiSide === 'black' : activeMatch ? activeMatch.black.type === 'ai' : true,
   }
   const serverAiDepthBySide: Record<Side, number> = {
-    red: useCreateAiConfig ? aiDepthBySide.red : activeMatch?.red.aiDepth ?? aiDepthBySide.red,
-    black: useCreateAiConfig ? aiDepthBySide.black : activeMatch?.black.aiDepth ?? aiDepthBySide.black,
+    red: activeMatch ? activeMatch.red.aiDepth : aiDepthBySide.red,
+    black: activeMatch ? activeMatch.black.aiDepth : aiDepthBySide.black,
   }
   const serverAiTimeBudgetBySide: Record<Side, number> = {
-    red: useCreateAiConfig ? aiTimeBudgetBySide.red : activeMatch?.red.aiTimeBudgetMs ?? aiTimeBudgetBySide.red,
-    black: useCreateAiConfig ? aiTimeBudgetBySide.black : activeMatch?.black.aiTimeBudgetMs ?? aiTimeBudgetBySide.black,
+    red: activeMatch ? activeMatch.red.aiTimeBudgetMs : aiTimeBudgetBySide.red,
+    black: activeMatch ? activeMatch.black.aiTimeBudgetMs : aiTimeBudgetBySide.black,
   }
+  const serverAiPikafishEnabledBySide: Record<Side, boolean> = {
+    red: activeMatch ? activeMatch.red.aiEngine === 'pikafish' : aiPikafishEnabledBySide.red,
+    black: activeMatch ? activeMatch.black.aiEngine === 'pikafish' : aiPikafishEnabledBySide.black,
+  }
+  const serverAiPikafishMaxThinkBySide: Record<Side, number> = {
+    red: activeMatch ? activeMatch.red.aiPikafishMaxThinkMs ?? DEFAULT_PIKAFISH_MAX_THINK_MS : aiPikafishMaxThinkBySide.red,
+    black: activeMatch ? activeMatch.black.aiPikafishMaxThinkMs ?? DEFAULT_PIKAFISH_MAX_THINK_MS : aiPikafishMaxThinkBySide.black,
+  }
+  const serverPlayerText = (side: Side): string => {
+    if (activeMatch) {
+      const slot = side === 'red' ? activeMatch.red : activeMatch.black
+      return slot.type === 'user' ? (slot.username ?? '未知用户') : `AI(${aiEngineText(slot.aiEngine)})`
+    }
+    if (!serverAiEnabledBySide[side]) return '玩家'
+    return `AI(${serverAiPikafishEnabledBySide[side] ? 'Pikafish' : '本地AI'})`
+  }
+  const statusRedPlayer = isServerMode ? serverPlayerText('red') : localPlayerText(aiEnabledBySide.red, localLastAiEngineBySide.red)
+  const statusBlackPlayer = isServerMode ? serverPlayerText('black') : localPlayerText(aiEnabledBySide.black, localLastAiEngineBySide.black)
+  const statusSummaryText = `提和状态：红${statusDrawBySide.red ? '已提' : '未提'} / 黑${statusDrawBySide.black ? '已提' : '未提'} ｜ 悔棋请求：${statusUndoText} ｜ 双方：红方${statusRedPlayer} / 黑方${statusBlackPlayer}`
   const currentUserRank = serverUser ? rankings.findIndex((item) => item.userId === serverUser.id) + 1 : 0
 
   const legalKeySet = useMemo(() => {
@@ -472,6 +564,7 @@ function App() {
   }, [serverToken])
 
   useEffect(() => {
+    activeMatchIdRef.current = activeMatchId
     if (activeMatchId) {
       localStorage.setItem(ACTIVE_MATCH_KEY, activeMatchId)
     } else {
@@ -740,7 +833,8 @@ function App() {
         setServerMatches(data.matches)
 
         if (data.matches.length > 0) {
-          const preferredMatch = activeMatchId ? data.matches.find((item) => item.id === activeMatchId) : undefined
+          const currentActiveId = activeMatchIdRef.current
+          const preferredMatch = currentActiveId ? data.matches.find((item) => item.id === currentActiveId) : undefined
           const nextMatch = preferredMatch ?? data.matches[0]
           applyServerMatch(nextMatch)
         } else {
@@ -760,22 +854,29 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [serverToken, activeMatchId, applyServerMatch])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverToken, applyServerMatch])
 
   useEffect(() => {
-    if (!isServerMode || !serverToken || !activeMatch) return
-    if (activeMatch.status === 'finished') return
+    if (!isServerMode || !serverToken || !activeMatchId) return
+
+    const activeMatchRef_snapshot = activeServerMatchRef.current
+    if (activeMatchRef_snapshot?.status === 'finished') return
 
     let stopped = false
     let inFlight = false
 
     const poll = () => {
       if (stopped || inFlight) return
+      const currentId = activeMatchIdRef.current
+      if (!currentId) return
       inFlight = true
       void serverApi
-        .getMatch(serverToken, activeMatch.id)
+        .getMatch(serverToken, currentId)
         .then((data) => {
-          applyServerMatch(data.match)
+          if (!stopped && activeMatchIdRef.current === currentId) {
+            applyServerMatch(data.match)
+          }
         })
         .catch(() => {
           // silent polling failure
@@ -792,7 +893,7 @@ function App() {
       stopped = true
       window.clearInterval(timer)
     }
-  }, [isServerMode, serverToken, activeMatch, applyServerMatch])
+  }, [isServerMode, serverToken, activeMatchId, applyServerMatch])
 
   const handleRegister = async () => {
     setServerBusy(true)
@@ -852,6 +953,11 @@ function App() {
         aiSide: createMode === 'vs_ai' ? createAiSide : undefined,
         aiDepthBySide,
         aiTimeBudgetBySide,
+        aiEngineBySide: {
+          red: aiPikafishEnabledBySide.red ? 'pikafish' : 'builtin',
+          black: aiPikafishEnabledBySide.black ? 'pikafish' : 'builtin',
+        },
+        aiPikafishMaxThinkBySide,
       })
       applyServerMatch(data.match)
       await refreshRankings()
@@ -863,7 +969,7 @@ function App() {
     }
   }
 
-  const handleImportPgnToServer = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleImportFenToServer = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target
     const file = input.files?.[0]
     input.value = ''
@@ -873,23 +979,9 @@ function App() {
     setServerMessage('')
     try {
       const text = await file.text()
-      const setupTag = extractPgnTagValue(text, 'FlipChessSetup')
-      const moves = extractPgnMoves(text)
-      if (!setupTag) {
-        setServerMessage('该 PGN 缺少 FlipChessSetup，无法准确建局')
-        return
-      }
-
-      let setupState: GameState
-      try {
-        const decoded = JSON.parse(decodeBase64Utf8(setupTag)) as unknown
-        if (!isGameStateLike(decoded)) {
-          setServerMessage('PGN 初始局面无效')
-          return
-        }
-        setupState = cloneGameState(decoded)
-      } catch {
-        setServerMessage('PGN 初始局面解析失败')
+      const setupState = fenToGameState(text)
+      if (!setupState) {
+        setServerMessage('FEN 格式无效，无法建局')
         return
       }
 
@@ -899,15 +991,19 @@ function App() {
         aiSide: createMode === 'vs_ai' ? createAiSide : undefined,
         aiDepthBySide,
         aiTimeBudgetBySide,
-        pgnSetup: setupState,
-        pgnMoves: moves,
+        aiEngineBySide: {
+          red: aiPikafishEnabledBySide.red ? 'pikafish' : 'builtin',
+          black: aiPikafishEnabledBySide.black ? 'pikafish' : 'builtin',
+        },
+        aiPikafishMaxThinkBySide,
+        fenSetup: setupState,
       })
 
       applyServerMatch(data.match)
       await refreshRankings()
-      setServerMessage(`已从 PGN 导入并创建在线对局（${moves.length} 步）`)
+      setServerMessage('已从 FEN 导入并创建在线对局')
     } catch (error) {
-      setServerMessage(error instanceof Error ? error.message : '导入 PGN 创建对局失败')
+      setServerMessage(error instanceof Error ? error.message : '导入 FEN 创建对局失败')
     } finally {
       setServerBusy(false)
     }
@@ -949,7 +1045,7 @@ function App() {
   }
 
   const updateServerAiDepth = async (side: Side, delta: number) => {
-    if (useCreateAiConfig || !activeMatch) {
+    if (!activeMatch) {
       if (!serverAiEnabledBySide[side]) return
       setAiDepthBySide((prev) => {
         const nextDepth = Math.max(MIN_AI_DEPTH, Math.min(MAX_AI_DEPTH, prev[side] + delta))
@@ -985,7 +1081,7 @@ function App() {
     const nextBudget = Number(value)
     if (Number.isNaN(nextBudget) || nextBudget <= 0) return
 
-    if (useCreateAiConfig || !activeMatch) {
+    if (!activeMatch) {
       if (!serverAiEnabledBySide[side]) return
       setAiTimeBudgetBySide((prev) => ({ ...prev, [side]: nextBudget }))
       return
@@ -1005,6 +1101,64 @@ function App() {
       setServerMessage(`${sideText(side)}AI时限已更新为 ${nextBudget}ms`)
     } catch (error) {
       setServerMessage(error instanceof Error ? error.message : '更新AI时限失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const updateServerAiEngine = async (side: Side) => {
+    const currentEnabled = serverAiPikafishEnabledBySide[side]
+    const nextEngine = currentEnabled ? 'builtin' : 'pikafish'
+
+    if (!activeMatch) {
+      if (!serverAiEnabledBySide[side]) return
+      setAiPikafishEnabledBySide((prev) => ({ ...prev, [side]: !currentEnabled }))
+      return
+    }
+
+    if (!serverToken) return
+    const slot = side === 'red' ? activeMatch.red : activeMatch.black
+    if (slot.type !== 'ai') return
+
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.updateMatchAiConfig(serverToken, activeMatch.id, {
+        aiEngineBySide: { [side]: nextEngine },
+      })
+      applyServerMatch(data.match)
+      setServerMessage(`${sideText(side)}AI引擎已切换为 ${nextEngine === 'pikafish' ? 'Pikafish' : '本地AI'}`)
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '切换AI引擎失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const updateServerAiPikafishMaxThink = async (side: Side, value: string) => {
+    const nextMs = Number(value)
+    if (Number.isNaN(nextMs) || nextMs <= 0) return
+
+    if (!activeMatch) {
+      if (!serverAiEnabledBySide[side]) return
+      setAiPikafishMaxThinkBySide((prev) => ({ ...prev, [side]: nextMs }))
+      return
+    }
+
+    if (!serverToken) return
+    const slot = side === 'red' ? activeMatch.red : activeMatch.black
+    if (slot.type !== 'ai') return
+
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.updateMatchAiConfig(serverToken, activeMatch.id, {
+        aiPikafishMaxThinkBySide: { [side]: nextMs },
+      })
+      applyServerMatch(data.match)
+      setServerMessage(`${sideText(side)}Pikafish思考上限已更新为 ${nextMs / 1000}秒`)
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '更新Pikafish思考上限失败')
     } finally {
       setServerBusy(false)
     }
@@ -1296,135 +1450,41 @@ function App() {
     setServerMessage('已交换双方局面')
   }
 
-  const exportPgn = () => {
+  const exportFen = () => {
     const exportState = isServerMode && activeMatch ? activeMatch.state : game
-    const result = pgnResultText(exportState)
-    const startState =
-      isServerMode && activeMatch
-        ? cloneGameState(activeMatch.initialState ?? activeMatch.state)
-        : timeline[0]
-          ? cloneGameState(timeline[0])
-          : createInitialGame()
-    const setupPayload = encodeBase64Utf8(JSON.stringify(startState))
-    const sourceMoves = isServerMode && activeMatch ? mapServerMovesToLogs(activeMatch.moves, activeMatch.createdAt) : moveLogs
-    const movetextParts: string[] = []
-
-    for (let idx = 0; idx < sourceMoves.length; idx += 2) {
-      const redMove = sourceMoves[idx]
-      const blackMove = sourceMoves[idx + 1]
-      if (!redMove) break
-
-      const round = Math.floor(idx / 2) + 1
-      const redText = `${pgnSquareText(redMove.from)}-${pgnSquareText(redMove.to)}`
-      if (blackMove) {
-        const blackText = `${pgnSquareText(blackMove.from)}-${pgnSquareText(blackMove.to)}`
-        movetextParts.push(`${round}. ${redText} ${blackText}`)
-      } else {
-        movetextParts.push(`${round}. ${redText}`)
-      }
-    }
-
-    if (result !== '*') {
-      movetextParts.push(result)
-    }
-
-    const headers = [
-      `[Event "${isServerMode && activeMatch ? 'FlipChess Server Match' : 'FlipChess Game'}"]`,
-      `[Site "${isServerMode && activeMatch ? 'Server' : 'Local'}"]`,
-      `[Date "${pgnDateText()}"]`,
-      `[Round "${isServerMode && activeMatch ? activeMatch.id : '-'}"]`,
-      `[White "${isServerMode && activeMatch ? activeMatch.red.username ?? 'Red' : 'Red'}"]`,
-      `[Black "${isServerMode && activeMatch ? activeMatch.black.username ?? 'Black' : 'Black'}"]`,
-      `[Result "${result}"]`,
-      `[Variant "FlipChess"]`,
-      `[FlipChessSetup "${setupPayload}"]`,
-      `[Termination "${sanitizePgnTag(exportState.message)}"]`,
-    ]
-
-    const pgnContent = `${headers.join('\n')}\n\n${movetextParts.join(' ')}\n`
-    const blob = new Blob([pgnContent], { type: 'application/x-chess-pgn;charset=utf-8' })
+    const fenContent = gameStateToFen(exportState)
+    const blob = new Blob([fenContent], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
     link.href = url
-    link.download = `flipchess-${stamp}.pgn`
+    link.download = `flipchess-${stamp}.fen`
     document.body.appendChild(link)
     link.click()
     link.remove()
     URL.revokeObjectURL(url)
   }
 
-  const importPgn = async (event: ChangeEvent<HTMLInputElement>) => {
+  const importFen = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target
     const file = input.files?.[0]
     input.value = ''
     if (!file) return
 
     const text = await file.text()
-    const setupTag = extractPgnTagValue(text, 'FlipChessSetup')
-    const moves = extractPgnMoves(text)
-
-    if (moves.length === 0 && !setupTag) {
-      window.alert('未在PGN中识别到可用着法')
+    const parsed = fenToGameState(text)
+    if (!parsed) {
+      window.alert('FEN 格式无效，无法导入')
       return
     }
 
-    let working: GameState
-    if (setupTag) {
-      try {
-        const decoded = JSON.parse(decodeBase64Utf8(setupTag)) as unknown
-        if (!isGameStateLike(decoded)) {
-          window.alert('PGN初始局面数据无效，无法导入')
-          return
-        }
-        working = cloneGameState(decoded)
-      } catch {
-        window.alert('PGN初始局面数据损坏，无法导入')
-        return
-      }
-    } else {
-      working = createInitialGame()
-    }
-
-    const importedTimeline: GameState[] = [cloneGameState(working)]
-    const importedLogs: MoveLogItem[] = []
-
-    for (const item of moves) {
-      const before = working
-      const after = playMove(before, item.from, item.to)
-      if (after === before) {
-        window.alert(`PGN包含非法着法：${pgnSquareText(item.from)}-${pgnSquareText(item.to)}（请确认使用本应用导出的PGN）`)
-        break
-      }
-
-      const movedId = after.board[item.to.row]?.[item.to.col]
-      const pieceText = movedId ? getPieceLabel(after.pieces[movedId]) : '子'
-
-      importedLogs.push({
-        id: after.moveCount,
-        side: before.turn,
-        actor: 'human',
-        pieceText,
-        from: { ...item.from },
-        to: { ...item.to },
-        thinkMs: 0,
-      })
-
-      working = after
-      importedTimeline.push(cloneGameState(working))
-
-      if (working.winner || working.isDraw) {
-        break
-      }
-    }
-
-    setGame(working)
-    setTimeline(importedTimeline)
+    setGame(parsed)
+    setTimeline([cloneGameState(parsed)])
     setReplayIndex(0)
-    setIsReplayMode(true)
-    setMoveLogs(importedLogs)
-    setLastThinkBySide(computeLastThinkMap(importedLogs))
+    setIsReplayMode(false)
+    setMoveLogs([])
+    setLastThinkBySide({ red: null, black: null })
     setDrawOfferBySide({ red: false, black: false })
     turnStartAtRef.current = nowMs()
   }
@@ -1852,15 +1912,15 @@ function App() {
                       <button type="button" onClick={handleCreateMatch} disabled={serverBusy}>
                         创建对局
                       </button>
-                      <button type="button" onClick={() => serverPgnInputRef.current?.click()} disabled={serverBusy}>
-                        导入PGN建局
+                      <button type="button" onClick={() => serverFenInputRef.current?.click()} disabled={serverBusy}>
+                        导入FEN建局
                       </button>
                       <input
-                        ref={serverPgnInputRef}
+                        ref={serverFenInputRef}
                         type="file"
-                        accept=".pgn,text/plain"
+                        accept=".fen,text/plain"
                         style={{ display: 'none' }}
-                        onChange={handleImportPgnToServer}
+                        onChange={handleImportFenToServer}
                       />
                     </div>
                     <div className="server-row list">
@@ -2077,6 +2137,29 @@ function App() {
                       请求悔棋
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => void updateServerAiEngine('red')}
+                    disabled={!serverAiEnabledBySide.red}
+                  >
+                    红方Pikafish：{serverAiEnabledBySide.red ? (serverAiPikafishEnabledBySide.red ? '开' : '关') : '--'}
+                  </button>
+                  <label className="ai-budget" aria-label="服务器红方Pikafish最长思考时长">
+                    <span>红Pika上限</span>
+                    <select
+                      value={serverAiPikafishMaxThinkBySide.red}
+                      onChange={(event) => {
+                        void updateServerAiPikafishMaxThink('red', event.target.value)
+                      }}
+                      disabled={!serverAiEnabledBySide.red || !serverAiPikafishEnabledBySide.red}
+                    >
+                      {PIKAFISH_MAX_THINK_OPTIONS.map((ms) => (
+                        <option key={`server-red-pika-max-${ms}`} value={ms}>
+                          {ms / 1000}秒
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <div className="ai-depth" aria-label="服务器红方AI搜索层数">
                     <button
                       type="button"
@@ -2105,6 +2188,29 @@ function App() {
                     >
                       {AI_TIME_BUDGET_OPTIONS.map((ms) => (
                         <option key={`server-red-budget-${ms}`} value={ms}>
+                          {ms / 1000}秒
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void updateServerAiEngine('black')}
+                    disabled={!serverAiEnabledBySide.black}
+                  >
+                    黑方Pikafish：{serverAiEnabledBySide.black ? (serverAiPikafishEnabledBySide.black ? '开' : '关') : '--'}
+                  </button>
+                  <label className="ai-budget" aria-label="服务器黑方Pikafish最长思考时长">
+                    <span>黑Pika上限</span>
+                    <select
+                      value={serverAiPikafishMaxThinkBySide.black}
+                      onChange={(event) => {
+                        void updateServerAiPikafishMaxThink('black', event.target.value)
+                      }}
+                      disabled={!serverAiEnabledBySide.black || !serverAiPikafishEnabledBySide.black}
+                    >
+                      {PIKAFISH_MAX_THINK_OPTIONS.map((ms) => (
+                        <option key={`server-black-pika-max-${ms}`} value={ms}>
                           {ms / 1000}秒
                         </option>
                       ))}
@@ -2161,15 +2267,15 @@ function App() {
                   </button>
                 </>
               )}
-              <button type="button" onClick={exportPgn} disabled={isServerMode ? !activeMatch : false}>
-                导出PGN
+              <button type="button" onClick={exportFen} disabled={isServerMode ? !activeMatch : false}>
+                导出FEN
               </button>
               {!isServerMode && (
                 <>
-                  <button type="button" onClick={() => pgnInputRef.current?.click()}>
-                    导入PGN
+                  <button type="button" onClick={() => fenInputRef.current?.click()}>
+                    导入FEN
                   </button>
-                  <input ref={pgnInputRef} type="file" accept=".pgn,text/plain" style={{ display: 'none' }} onChange={importPgn} />
+                  <input ref={fenInputRef} type="file" accept=".fen,text/plain" style={{ display: 'none' }} onChange={importFen} />
                 </>
               )}
             </div>}

@@ -79,7 +79,7 @@
 }
 ```
 
-#### 从 PGN 导入建局（可选字段）
+#### 从 FEN 导入建局（可选字段）
 
 `POST /matches` 额外支持：
 
@@ -87,15 +87,11 @@
 {
   "mode": "pvp",
   "opponentUsername": "player_b",
-  "pgnSetup": { "...": "GameState" },
-  "pgnMoves": [
-    { "from": { "row": 9, "col": 4 }, "to": { "row": 8, "col": 4 } }
-  ]
+  "fenSetup": { "...": "GameState" }
 }
 ```
 
-- `pgnSetup`：由导出 PGN 的 `FlipChessSetup` 反序列化得到。
-- `pgnMoves`：走子序列，服务器会校验合法性并回放到当前对局。
+- `fenSetup`：由导出 FEN 解析得到的 GameState，服务器会校验合法性。
 
 > 说明：当轮到 AI 且局面未结束时，服务器会自动计算并落子。
 

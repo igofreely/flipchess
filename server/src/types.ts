@@ -16,6 +16,7 @@ export interface MatchSideSlot {
   aiDepth: number
   aiTimeBudgetMs: number
   aiEngine?: AiEngine
+  aiPikafishMaxThinkMs?: number
 }
 
 export interface MoveRecord {

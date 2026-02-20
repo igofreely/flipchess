@@ -48,8 +48,9 @@ if [[ -n "${DEPLOY_PASSWORD}" ]]; then
         echo "  Linux: apt-get install sshpass"
         exit 1
     fi
-    _ssh()  { sshpass -p "${DEPLOY_PASSWORD}" ssh ${SSH_OPTS} "${REMOTE}" "$@"; }
-    _scp()  { sshpass -p "${DEPLOY_PASSWORD}" scp ${SSH_OPTS} "$@"; }
+    export SSHPASS="${DEPLOY_PASSWORD}"
+    _ssh()  { sshpass -e ssh ${SSH_OPTS} "${REMOTE}" "$@"; }
+    _scp()  { sshpass -e scp ${SSH_OPTS} "$@"; }
 else
     _ssh()  { ssh ${SSH_OPTS} "${REMOTE}" "$@"; }
     _scp()  { scp ${SSH_OPTS} "$@"; }

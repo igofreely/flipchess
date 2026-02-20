@@ -50,6 +50,11 @@ const clampPikafishThinkMs = (value: number) => {
   return Math.max(200, Math.min(cap, Math.floor(value)))
 }
 
+const resolveAiEngine = (requested?: string): AiEngine => {
+  if (requested === 'builtin') return 'builtin'
+  return PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin'
+}
+
 const toPublicUser = (user: UserRecord): PublicUser => ({
   id: user.id,
   username: user.username,
@@ -161,8 +166,9 @@ const chooseAiMoveWithConfiguredBackend = async (
   slot: MatchSideSlot,
   addTrace?: (line: string) => void,
 ) => {
-  if (PIKAFISH_JIEQI_PATH) {
-    const pikafishBudgetMs = clampPikafishThinkMs(slot.aiTimeBudgetMs)
+  const wantsPikafish = slot.aiEngine !== 'builtin' && !!PIKAFISH_JIEQI_PATH
+  if (wantsPikafish) {
+    const pikafishBudgetMs = clampPikafishThinkMs(slot.aiPikafishMaxThinkMs ?? slot.aiTimeBudgetMs)
     addTrace?.(`[backend] prefer=pikafish depth=${PIKAFISH_SEARCH_DEPTH} budgetMs=${pikafishBudgetMs}`)
     try {
       const pikafishMove = await searchBestMoveWithPikafish({
@@ -292,7 +298,6 @@ const scheduleAiTurnIfNeeded = (matchId: string, delayMs = MIN_AI_MOVE_INTERVAL_
 
     match.state = next
     match.updatedAt = new Date().toISOString()
-  slot.aiEngine = aiEngineUsed
   appendMoveLog(match, side, move.from, move.to, 'ai', aiEngineUsed)
     console.log(`[ai] match=${match.id} side=${side} engine=${aiEngineUsed} move=${move.from.row},${move.from.col}->${move.to.row},${move.to.col}`)
     finalizeMatchStatus(match)
@@ -458,13 +463,14 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
 
   const aiDepthBySide = (req.body?.aiDepthBySide ?? {}) as Partial<Record<Side, number>>
   const aiTimeBudgetBySide = (req.body?.aiTimeBudgetBySide ?? {}) as Partial<Record<Side, number>>
-  const importedSetup = req.body?.pgnSetup as unknown
-  const importedMoves = Array.isArray(req.body?.pgnMoves) ? (req.body.pgnMoves as Array<{ from?: unknown; to?: unknown }>) : null
+  const aiEngineBySide = (req.body?.aiEngineBySide ?? {}) as Partial<Record<Side, string>>
+  const aiPikafishMaxThinkBySide = (req.body?.aiPikafishMaxThinkBySide ?? {}) as Partial<Record<Side, number>>
+  const importedSetup = req.body?.fenSetup as unknown
 
   let initialState = createInitialGame()
   if (importedSetup !== undefined) {
     if (!isGameStateLike(importedSetup)) {
-      res.status(400).json({ message: 'Invalid pgnSetup' })
+      res.status(400).json({ message: 'Invalid fenSetup' })
       return
     }
     initialState = cloneState(importedSetup)
@@ -487,7 +493,8 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
       type: 'ai',
       aiDepth: clampDepth(aiDepthBySide.black),
       aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.black),
-      aiEngine: PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin',
+      aiEngine: resolveAiEngine(aiEngineBySide.black),
+      aiPikafishMaxThinkMs: typeof aiPikafishMaxThinkBySide.black === 'number' ? clampPikafishThinkMs(aiPikafishMaxThinkBySide.black) : undefined,
     },
     initialState: cloneState(initialState),
     state: initialState,
@@ -529,7 +536,8 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
         type: 'ai',
         aiDepth: clampDepth(aiDepthBySide.red),
         aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.red),
-        aiEngine: PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin',
+        aiEngine: resolveAiEngine(aiEngineBySide.red),
+        aiPikafishMaxThinkMs: typeof aiPikafishMaxThinkBySide.red === 'number' ? clampPikafishThinkMs(aiPikafishMaxThinkBySide.red) : undefined,
       }
       newMatch.black = {
         type: 'user',
@@ -543,45 +551,16 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
       type: 'ai',
       aiDepth: clampDepth(aiDepthBySide.red),
       aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.red),
-      aiEngine: PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin',
+      aiEngine: resolveAiEngine(aiEngineBySide.red),
+      aiPikafishMaxThinkMs: typeof aiPikafishMaxThinkBySide.red === 'number' ? clampPikafishThinkMs(aiPikafishMaxThinkBySide.red) : undefined,
     }
     newMatch.black = {
       type: 'ai',
       aiDepth: clampDepth(aiDepthBySide.black),
       aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.black),
-      aiEngine: PIKAFISH_JIEQI_PATH ? 'pikafish' : 'builtin',
+      aiEngine: resolveAiEngine(aiEngineBySide.black),
+      aiPikafishMaxThinkMs: typeof aiPikafishMaxThinkBySide.black === 'number' ? clampPikafishThinkMs(aiPikafishMaxThinkBySide.black) : undefined,
     }
-  }
-
-  if (importedMoves && importedMoves.length > 0) {
-    let working = cloneState(newMatch.initialState)
-    for (let idx = 0; idx < importedMoves.length; idx += 1) {
-      if (working.winner || working.isDraw) {
-        res.status(400).json({ message: 'PGN moves exceed terminal state' })
-        return
-      }
-
-      const from = parsePosition(importedMoves[idx].from)
-      const to = parsePosition(importedMoves[idx].to)
-      if (!from || !to) {
-        res.status(400).json({ message: `Invalid PGN move payload at index ${idx}` })
-        return
-      }
-
-      const side = working.turn
-      const next = playMove(working, from, to)
-      if (next === working) {
-        res.status(400).json({ message: `Illegal PGN move at index ${idx}` })
-        return
-      }
-
-      working = next
-      newMatch.state = working
-      appendMoveLog(newMatch, side, from, to, 'user')
-    }
-
-    newMatch.state = working
-    finalizeMatchStatus(newMatch)
   }
 
   await store.upsertMatch(newMatch)
@@ -638,6 +617,8 @@ app.patch('/api/matches/:matchId/ai-config', requireAuth, async (req: Authentica
 
   const aiDepthBySide = (req.body?.aiDepthBySide ?? {}) as Partial<Record<Side, number>>
   const aiTimeBudgetBySide = (req.body?.aiTimeBudgetBySide ?? {}) as Partial<Record<Side, number>>
+  const aiEngineBySide = (req.body?.aiEngineBySide ?? {}) as Partial<Record<Side, string>>
+  const aiPikafishMaxThinkBySide = (req.body?.aiPikafishMaxThinkBySide ?? {}) as Partial<Record<Side, number>>
   let updated = false
 
   for (const side of ['red', 'black'] as Side[]) {
@@ -650,6 +631,14 @@ app.patch('/api/matches/:matchId/ai-config', requireAuth, async (req: Authentica
     }
     if (typeof aiTimeBudgetBySide[side] === 'number') {
       slot.aiTimeBudgetMs = clampBudget(aiTimeBudgetBySide[side])
+      updated = true
+    }
+    if (typeof aiEngineBySide[side] === 'string') {
+      slot.aiEngine = resolveAiEngine(aiEngineBySide[side])
+      updated = true
+    }
+    if (typeof aiPikafishMaxThinkBySide[side] === 'number') {
+      slot.aiPikafishMaxThinkMs = clampPikafishThinkMs(aiPikafishMaxThinkBySide[side])
       updated = true
     }
   }
