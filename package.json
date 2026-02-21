@@ -8,6 +8,7 @@
     "server:dev": "tsx watch server/src/index.ts",
     "server:start": "tsx server/src/index.ts",
     "server:start:mysql": "bash scripts/server-start-mysql.sh",
+    "maintenance:matches": "tsx scripts/maintenance-matches.ts",
     "mysql:up": "bash scripts/mysql-up.sh",
     "mysql:down": "bash scripts/mysql-down.sh",
     "check:pikafish": "bash scripts/check-pikafish.sh",

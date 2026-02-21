@@ -490,6 +490,11 @@
   outline: 2px solid #1f6feb;
 }
 
+.cell.layout-selected {
+  outline: 2px dashed #1f6feb;
+  outline-offset: -1px;
+}
+
 .cell.legal {
   background: #e7f2ff;
 }

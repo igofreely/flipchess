@@ -46,6 +46,8 @@ export interface ServerMatch {
   createdByUserId?: string
   red: ServerMatchSide
   black: ServerMatchSide
+  layoutSetupRequired?: boolean
+  layoutReadyBySide?: Record<Side, boolean>
   initialState?: GameState
   drawOfferBySide: Record<Side, boolean>
   undoRequest: {
@@ -153,6 +155,9 @@ export const serverApi = {
   },
   move(token: string, matchId: string, from: Position, to: Position) {
     return request<{ match: ServerMatch }>(`/matches/${matchId}/move`, { method: 'POST', body: JSON.stringify({ from, to }) }, token)
+  },
+  submitLayout(token: string, matchId: string, fenSetup: GameState) {
+    return request<{ match: ServerMatch }>(`/matches/${matchId}/layout-submit`, { method: 'POST', body: JSON.stringify({ fenSetup }) }, token)
   },
   drawOffer(token: string, matchId: string) {
     return request<{ match: ServerMatch }>(`/matches/${matchId}/draw-offer`, { method: 'POST' }, token)

@@ -39,6 +39,8 @@ export interface MatchRecord {
   createdByUserId?: string
   red: MatchSideSlot
   black: MatchSideSlot
+  layoutSetupRequired?: boolean
+  layoutReadyBySide?: Record<Side, boolean>
   initialState: GameState
   state: GameState
   drawOfferBySide: Record<Side, boolean>

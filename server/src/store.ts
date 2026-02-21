@@ -24,6 +24,12 @@ interface MatchRow extends RowDataPacket {
   result: MatchRecord['result']
   termination: string | null
   moves_json: string
+  layout_setup_required: number | null
+  layout_ready_json: string | null
+}
+
+interface ColumnExistsRow extends RowDataPacket {
+  Field: string
 }
 
 const toIsoString = (value: Date | string) => {
@@ -95,6 +101,13 @@ export class DataStore {
     this.pool = buildPool()
   }
 
+  private async ensureColumn(tableName: string, columnName: string, definitionSql: string) {
+    const [rows] = await this.pool.query<ColumnExistsRow[]>(`SHOW COLUMNS FROM ${tableName} LIKE ?`, [columnName])
+    if (rows.length === 0) {
+      await this.pool.query(`ALTER TABLE ${tableName} ADD COLUMN ${definitionSql}`)
+    }
+  }
+
   async init() {
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -119,6 +132,8 @@ export class DataStore {
         state_json JSON NOT NULL,
         draw_offer_json JSON NOT NULL,
         undo_request_json JSON NULL,
+        layout_setup_required TINYINT(1) NULL,
+        layout_ready_json JSON NULL,
         result VARCHAR(16) NULL,
         termination TEXT NULL,
         moves_json JSON NOT NULL,
@@ -127,6 +142,9 @@ export class DataStore {
         INDEX idx_matches_created_by_user (created_by_user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `)
+
+    await this.ensureColumn('matches', 'layout_setup_required', 'layout_setup_required TINYINT(1) NULL')
+    await this.ensureColumn('matches', 'layout_ready_json', 'layout_ready_json JSON NULL')
   }
 
   private rowToUser(row: UserRow): UserRecord {
@@ -152,6 +170,8 @@ export class DataStore {
       state: parseJson(row.state_json),
       drawOfferBySide: parseJson(row.draw_offer_json),
       undoRequest: row.undo_request_json ? parseJson(row.undo_request_json) : null,
+      layoutSetupRequired: row.layout_setup_required === null ? undefined : row.layout_setup_required === 1,
+      layoutReadyBySide: row.layout_ready_json ? parseJson(row.layout_ready_json) : undefined,
       result: row.result,
       termination: row.termination,
       moves: parseJson(row.moves_json),
@@ -188,14 +208,14 @@ export class DataStore {
 
   async listMatches() {
     const [rows] = await this.pool.query<MatchRow[]>(
-      'SELECT id, mode, status, created_at, updated_at, created_by_user_id, red_json, black_json, initial_state_json, state_json, draw_offer_json, undo_request_json, result, termination, moves_json FROM matches',
+      'SELECT id, mode, status, created_at, updated_at, created_by_user_id, red_json, black_json, initial_state_json, state_json, draw_offer_json, undo_request_json, layout_setup_required, layout_ready_json, result, termination, moves_json FROM matches',
     )
     return rows.map((row) => this.rowToMatch(row))
   }
 
   async findMatchById(matchId: string): Promise<MatchRecord | undefined> {
     const [rows] = await this.pool.query<MatchRow[]>(
-      'SELECT id, mode, status, created_at, updated_at, created_by_user_id, red_json, black_json, initial_state_json, state_json, draw_offer_json, undo_request_json, result, termination, moves_json FROM matches WHERE id = ? LIMIT 1',
+      'SELECT id, mode, status, created_at, updated_at, created_by_user_id, red_json, black_json, initial_state_json, state_json, draw_offer_json, undo_request_json, layout_setup_required, layout_ready_json, result, termination, moves_json FROM matches WHERE id = ? LIMIT 1',
       [matchId],
     )
     const row = rows[0]
@@ -207,8 +227,9 @@ export class DataStore {
       `INSERT INTO matches (
         id, mode, status, created_at, updated_at, created_by_user_id,
         red_json, black_json, initial_state_json, state_json,
-        draw_offer_json, undo_request_json, result, termination, moves_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        draw_offer_json, undo_request_json, layout_setup_required, layout_ready_json,
+        result, termination, moves_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         mode = VALUES(mode),
         status = VALUES(status),
@@ -221,6 +242,8 @@ export class DataStore {
         state_json = VALUES(state_json),
         draw_offer_json = VALUES(draw_offer_json),
         undo_request_json = VALUES(undo_request_json),
+        layout_setup_required = VALUES(layout_setup_required),
+        layout_ready_json = VALUES(layout_ready_json),
         result = VALUES(result),
         termination = VALUES(termination),
         moves_json = VALUES(moves_json)`,
@@ -237,6 +260,8 @@ export class DataStore {
         stringifyJson(match.state),
         stringifyJson(match.drawOfferBySide),
         match.undoRequest ? stringifyJson(match.undoRequest) : null,
+        typeof match.layoutSetupRequired === 'boolean' ? (match.layoutSetupRequired ? 1 : 0) : null,
+        match.layoutReadyBySide ? stringifyJson(match.layoutReadyBySide) : null,
         match.result,
         match.termination,
         stringifyJson(match.moves),

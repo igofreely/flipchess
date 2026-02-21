@@ -319,6 +319,7 @@ const SERVER_TOKEN_KEY = 'flipchess.server.token'
 const PLAY_MODE_KEY = 'flipchess.play.mode'
 const ACTIVE_MATCH_KEY = 'flipchess.server.activeMatchId'
 const LOCAL_SNAPSHOT_KEY = 'flipchess.local.snapshot'
+const SERVER_CREATE_FORM_KEY = 'flipchess.server.create.form'
 
 interface LocalSnapshot {
   game: GameState
@@ -336,6 +337,340 @@ interface LocalSnapshot {
   drawOfferBySide: Record<Side, boolean>
   isReplayMode: boolean
   replayIndex: number
+  isLayoutMode?: boolean
+}
+
+interface ServerCreateFormSnapshot {
+  mode: 'pvp' | 'vs_ai' | 'ai_vs_ai'
+  opponent: string
+  aiSide: Side
+}
+
+interface CustomLayoutData {
+  version: 1
+  scope: 'full' | 'red' | 'black'
+  red?: Record<string, PieceType>
+  black?: Record<string, PieceType>
+}
+
+const RED_STANDARD_LAYOUT_POSITIONS: Position[] = [
+  { row: 9, col: 0 }, { row: 9, col: 1 }, { row: 9, col: 2 }, { row: 9, col: 3 }, { row: 9, col: 5 }, { row: 9, col: 6 }, { row: 9, col: 7 }, { row: 9, col: 8 },
+  { row: 7, col: 1 }, { row: 7, col: 7 },
+  { row: 6, col: 0 }, { row: 6, col: 2 }, { row: 6, col: 4 }, { row: 6, col: 6 }, { row: 6, col: 8 },
+]
+
+const BLACK_STANDARD_LAYOUT_POSITIONS: Position[] = [
+  { row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }, { row: 0, col: 5 }, { row: 0, col: 6 }, { row: 0, col: 7 }, { row: 0, col: 8 },
+  { row: 2, col: 1 }, { row: 2, col: 7 },
+  { row: 3, col: 0 }, { row: 3, col: 2 }, { row: 3, col: 4 }, { row: 3, col: 6 }, { row: 3, col: 8 },
+]
+
+const RED_STAGING_LAYOUT_POSITIONS: Position[] = [
+  { row: 8, col: 0 }, { row: 8, col: 1 }, { row: 8, col: 2 }, { row: 8, col: 3 }, { row: 8, col: 4 }, { row: 8, col: 5 }, { row: 8, col: 6 }, { row: 8, col: 7 }, { row: 8, col: 8 },
+  { row: 7, col: 0 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }, { row: 7, col: 6 },
+]
+
+const BLACK_STAGING_LAYOUT_POSITIONS: Position[] = [
+  { row: 1, col: 0 }, { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 }, { row: 1, col: 5 }, { row: 1, col: 6 }, { row: 1, col: 7 }, { row: 1, col: 8 },
+  { row: 2, col: 0 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 5 }, { row: 2, col: 6 },
+]
+
+const sameLayoutPos = (a: Position, b: Position) => a.row === b.row && a.col === b.col
+const inLayoutPositions = (pos: Position, positions: Position[]) => positions.some((p) => sameLayoutPos(p, pos))
+
+const getStandardPositionsBySide = (side: Side) => (side === 'red' ? RED_STANDARD_LAYOUT_POSITIONS : BLACK_STANDARD_LAYOUT_POSITIONS)
+const getStagingPositionsBySide = (side: Side) => (side === 'red' ? RED_STAGING_LAYOUT_POSITIONS : BLACK_STAGING_LAYOUT_POSITIONS)
+
+const canMoveLayoutPiece = (piece: Piece | null | undefined, editableSide?: Side) => {
+  if (!piece || !piece.alive || piece.realType === 'king') return false
+  if (editableSide && piece.side !== editableSide) return false
+  return true
+}
+
+const createLayoutDraftGame = (editableSides: Side[] = ['red', 'black'], seedState?: GameState): GameState => {
+  const base = cloneGameState(seedState ?? createInitialGame())
+  base.selected = null
+  base.legalMoves = []
+
+  for (const side of editableSides) {
+    const movable = Object.values(base.pieces)
+      .filter((piece) => piece.alive && piece.side === side && piece.realType !== 'king')
+      .sort((a, b) => a.id.localeCompare(b.id))
+
+    for (const piece of movable) {
+      base.board[piece.currentPos.row][piece.currentPos.col] = null
+      piece.isRevealed = true
+    }
+
+    const staging = getStagingPositionsBySide(side)
+    movable.forEach((piece, idx) => {
+      const target = staging[idx]
+      piece.currentPos = { ...target }
+      base.board[target.row][target.col] = piece.id
+    })
+  }
+
+  return base
+}
+
+const moveLayoutPiece = (state: GameState, from: Position, to: Position, editableSide?: Side): GameState => {
+  const fromId = state.board[from.row]?.[from.col]
+  if (!fromId) return state
+  if (state.board[to.row]?.[to.col]) return state
+
+  const piece = state.pieces[fromId]
+  if (!canMoveLayoutPiece(piece, editableSide)) return state
+
+  const allowedTargets = [...getStandardPositionsBySide(piece.side), ...getStagingPositionsBySide(piece.side)]
+  if (!inLayoutPositions(to, allowedTargets)) return state
+
+  const next = cloneGameState(state)
+  const id = next.board[from.row]?.[from.col]
+  if (!id) return state
+
+  next.board[from.row][from.col] = null
+  next.board[to.row][to.col] = id
+  next.pieces[id].currentPos = { ...to }
+  next.selected = null
+  next.legalMoves = []
+  return next
+}
+
+const standardBornTypeByPosition = (side: Side, pos: Position): PieceType | null => {
+  const key = `${pos.row},${pos.col}`
+  const redMap: Record<string, PieceType> = {
+    '9,0': 'rook', '9,1': 'horse', '9,2': 'elephant', '9,3': 'advisor', '9,5': 'advisor', '9,6': 'elephant', '9,7': 'horse', '9,8': 'rook',
+    '7,1': 'cannon', '7,7': 'cannon',
+    '6,0': 'pawn', '6,2': 'pawn', '6,4': 'pawn', '6,6': 'pawn', '6,8': 'pawn',
+  }
+  const blackMap: Record<string, PieceType> = {
+    '0,0': 'rook', '0,1': 'horse', '0,2': 'elephant', '0,3': 'advisor', '0,5': 'advisor', '0,6': 'elephant', '0,7': 'horse', '0,8': 'rook',
+    '2,1': 'cannon', '2,7': 'cannon',
+    '3,0': 'pawn', '3,2': 'pawn', '3,4': 'pawn', '3,6': 'pawn', '3,8': 'pawn',
+  }
+  return (side === 'red' ? redMap : blackMap)[key] ?? null
+}
+
+const finishLayoutGame = (state: GameState, editableSide?: Side): GameState | null => {
+  const isValidSide = (candidate: GameState, side: Side, positions: Position[]) => {
+    return positions.every((pos) => {
+      const id = candidate.board[pos.row]?.[pos.col]
+      if (!id) return false
+      const piece = candidate.pieces[id]
+      if (!piece || !piece.alive || piece.side !== side || piece.realType === 'king') return false
+      return true
+    })
+  }
+
+  const resetStartMeta = (candidate: GameState) => {
+    candidate.selected = null
+    candidate.legalMoves = []
+    candidate.turn = 'red'
+    candidate.winner = null
+    candidate.isDraw = false
+    candidate.quietMoveCount = 0
+    candidate.moveCount = 0
+    candidate.message = '轮到红方'
+    candidate.positionHistory = []
+    candidate.checkHistory = []
+  }
+
+  if (!editableSide) {
+    const next = cloneGameState(state)
+    if (!isValidSide(next, 'red', RED_STANDARD_LAYOUT_POSITIONS) || !isValidSide(next, 'black', BLACK_STANDARD_LAYOUT_POSITIONS)) {
+      return null
+    }
+
+    for (const piece of Object.values(next.pieces)) {
+      if (!piece.alive || piece.realType === 'king') continue
+      const bornType = standardBornTypeByPosition(piece.side, piece.currentPos)
+      if (!bornType) {
+        return null
+      }
+      piece.isRevealed = false
+      piece.bornType = bornType
+      piece.bornPos = { ...piece.currentPos }
+    }
+
+    resetStartMeta(next)
+    return next
+  }
+
+  const sidePositions = getStandardPositionsBySide(editableSide)
+  if (!isValidSide(state, editableSide, sidePositions)) {
+    return null
+  }
+
+  const next = createInitialGame()
+  for (const pos of sidePositions) {
+    const sourceId = state.board[pos.row]?.[pos.col]
+    if (!sourceId) return null
+    const sourcePiece = state.pieces[sourceId]
+    if (!sourcePiece || !sourcePiece.alive || sourcePiece.side !== editableSide || sourcePiece.realType === 'king') return null
+
+    const targetId = next.board[pos.row]?.[pos.col]
+    if (!targetId) return null
+    const targetPiece = next.pieces[targetId]
+    targetPiece.realType = sourcePiece.realType
+    targetPiece.isRevealed = false
+    targetPiece.bornType = standardBornTypeByPosition(editableSide, pos) ?? targetPiece.bornType
+    targetPiece.bornPos = { ...pos }
+    targetPiece.currentPos = { ...pos }
+  }
+
+  resetStartMeta(next)
+  return next
+}
+
+const layoutKey = (pos: Position) => `${pos.row},${pos.col}`
+
+const parseLayoutKey = (key: string): Position | null => {
+  const [rowText, colText] = key.split(',')
+  const row = Number(rowText)
+  const col = Number(colText)
+  if (!Number.isInteger(row) || !Number.isInteger(col)) return null
+  if (row < 0 || row >= BOARD_ROWS || col < 0 || col >= BOARD_COLS) return null
+  return { row, col }
+}
+
+const remapLayoutMapAcrossSides = (source: Record<string, PieceType>): Record<string, PieceType> | null => {
+  const out: Record<string, PieceType> = {}
+  for (const [key, pieceType] of Object.entries(source)) {
+    const pos = parseLayoutKey(key)
+    if (!pos) return null
+    const mirrored = mirrorPos(pos)
+    out[layoutKey(mirrored)] = pieceType
+  }
+  return out
+}
+
+const isPieceType = (value: unknown): value is PieceType => {
+  return value === 'king' || value === 'advisor' || value === 'elephant' || value === 'horse' || value === 'rook' || value === 'cannon' || value === 'pawn'
+}
+
+const buildCustomLayoutData = (state: GameState, editableSide?: Side): CustomLayoutData | null => {
+  const normalized = finishLayoutGame(state, editableSide)
+  if (!normalized) return null
+
+  const buildSideMap = (side: Side): Record<string, PieceType> | null => {
+    const out: Record<string, PieceType> = {}
+    for (const pos of getStandardPositionsBySide(side)) {
+      const id = normalized.board[pos.row]?.[pos.col]
+      if (!id) return null
+      const piece = normalized.pieces[id]
+      if (!piece || !piece.alive || piece.side !== side || piece.realType === 'king') return null
+      out[layoutKey(pos)] = piece.realType
+    }
+    return out
+  }
+
+  if (editableSide) {
+    const sideMap = buildSideMap(editableSide)
+    if (!sideMap) return null
+    return editableSide === 'red'
+      ? { version: 1, scope: 'red', red: sideMap }
+      : { version: 1, scope: 'black', black: sideMap }
+  }
+
+  const red = buildSideMap('red')
+  const black = buildSideMap('black')
+  if (!red || !black) return null
+  return { version: 1, scope: 'full', red, black }
+}
+
+const parseCustomLayoutData = (raw: string): CustomLayoutData | null => {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+
+  if (!parsed || typeof parsed !== 'object') return null
+  const obj = parsed as Partial<CustomLayoutData>
+  if (obj.version !== 1) return null
+
+  const validateSide = (sideData: Record<string, PieceType>, positions: Position[]) => {
+    for (const pos of positions) {
+      const type = sideData[layoutKey(pos)]
+      if (!type || !isPieceType(type) || type === 'king') return false
+    }
+    return true
+  }
+
+  const explicitScope = obj.scope
+  const inferredScope: 'full' | 'red' | 'black' | null =
+    explicitScope === 'full' || explicitScope === 'red' || explicitScope === 'black'
+      ? explicitScope
+      : obj.red && obj.black
+        ? 'full'
+        : obj.red
+          ? 'red'
+          : obj.black
+            ? 'black'
+            : null
+  if (!inferredScope) return null
+
+  const redData = (obj.red ?? null) as Record<string, PieceType> | null
+  const blackData = (obj.black ?? null) as Record<string, PieceType> | null
+
+  if (inferredScope === 'full') {
+    if (!redData || !blackData) return null
+    if (!validateSide(redData, RED_STANDARD_LAYOUT_POSITIONS)) return null
+    if (!validateSide(blackData, BLACK_STANDARD_LAYOUT_POSITIONS)) return null
+    return { version: 1, scope: 'full', red: redData, black: blackData }
+  }
+
+  if (inferredScope === 'red') {
+    if (!redData) return null
+    if (!validateSide(redData, RED_STANDARD_LAYOUT_POSITIONS)) return null
+    return { version: 1, scope: 'red', red: redData }
+  }
+
+  if (!blackData) return null
+  if (!validateSide(blackData, BLACK_STANDARD_LAYOUT_POSITIONS)) return null
+  return { version: 1, scope: 'black', black: blackData }
+}
+
+const gameFromCustomLayoutData = (layout: CustomLayoutData, editableSide?: Side): GameState | null => {
+  const base = createInitialGame()
+
+  const applySideMap = (side: Side, map: Record<string, PieceType>) => {
+    for (const pos of getStandardPositionsBySide(side)) {
+      const id = base.board[pos.row][pos.col]
+      if (!id) return false
+      const piece = base.pieces[id]
+      const mapped = map[layoutKey(pos)]
+      if (!mapped || mapped === 'king') return false
+      piece.realType = mapped
+      piece.isRevealed = false
+      piece.bornType = standardBornTypeByPosition(side, pos) ?? piece.bornType
+      piece.bornPos = { ...pos }
+      piece.currentPos = { ...pos }
+    }
+    return true
+  }
+
+  if (editableSide) {
+    const sideMap = editableSide === 'red' ? layout.red : layout.black
+    if (!sideMap) return null
+    if (!applySideMap(editableSide, sideMap)) return null
+  } else {
+    if (!layout.red || !layout.black) return null
+    if (!applySideMap('red', layout.red) || !applySideMap('black', layout.black)) return null
+  }
+
+  base.selected = null
+  base.legalMoves = []
+  base.turn = 'red'
+  base.winner = null
+  base.isDraw = false
+  base.quietMoveCount = 0
+  base.moveCount = 0
+  base.message = '轮到红方'
+  base.positionHistory = []
+  base.checkHistory = []
+  return base
 }
 
 const mapServerMovesToLogs = (moves: ServerMatch['moves'], matchCreatedAt?: string): MoveLogItem[] => {
@@ -384,6 +719,8 @@ function App() {
   const [timeline, setTimeline] = useState<GameState[]>(() => [cloneGameState(initialGame)])
   const [isReplayMode, setIsReplayMode] = useState(false)
   const [replayIndex, setReplayIndex] = useState(0)
+  const [isLayoutMode, setIsLayoutMode] = useState(false)
+  const [layoutSelectedPos, setLayoutSelectedPos] = useState<Position | null>(null)
   const [actionsCollapsed, setActionsCollapsed] = useState(false)
   const [playMode, setPlayMode] = useState<'local' | 'server'>(() => {
     const raw = localStorage.getItem(PLAY_MODE_KEY)
@@ -398,9 +735,39 @@ function App() {
   const [rankings, setRankings] = useState<RankingItem[]>([])
   const [authUsername, setAuthUsername] = useState('')
   const [authPassword, setAuthPassword] = useState('')
-  const [createMode, setCreateMode] = useState<'pvp' | 'vs_ai' | 'ai_vs_ai'>('vs_ai')
-  const [createOpponent, setCreateOpponent] = useState('')
-  const [createAiSide, setCreateAiSide] = useState<Side>('black')
+  const [createMode, setCreateMode] = useState<'pvp' | 'vs_ai' | 'ai_vs_ai'>(() => {
+    const raw = localStorage.getItem(SERVER_CREATE_FORM_KEY)
+    if (!raw) return 'vs_ai'
+    try {
+      const parsed = JSON.parse(raw) as Partial<ServerCreateFormSnapshot>
+      if (parsed.mode === 'pvp' || parsed.mode === 'vs_ai' || parsed.mode === 'ai_vs_ai') {
+        return parsed.mode
+      }
+    } catch {
+      // ignore malformed snapshot
+    }
+    return 'vs_ai'
+  })
+  const [createOpponent, setCreateOpponent] = useState(() => {
+    const raw = localStorage.getItem(SERVER_CREATE_FORM_KEY)
+    if (!raw) return ''
+    try {
+      const parsed = JSON.parse(raw) as Partial<ServerCreateFormSnapshot>
+      return typeof parsed.opponent === 'string' ? parsed.opponent : ''
+    } catch {
+      return ''
+    }
+  })
+  const [createAiSide, setCreateAiSide] = useState<Side>(() => {
+    const raw = localStorage.getItem(SERVER_CREATE_FORM_KEY)
+    if (!raw) return 'black'
+    try {
+      const parsed = JSON.parse(raw) as Partial<ServerCreateFormSnapshot>
+      return parsed.aiSide === 'red' || parsed.aiSide === 'black' ? parsed.aiSide : 'black'
+    } catch {
+      return 'black'
+    }
+  })
   const [serverBusy, setServerBusy] = useState(false)
   const [serverMessage, setServerMessage] = useState('')
   const [localAiLockMessage, setLocalAiLockMessage] = useState('')
@@ -416,6 +783,8 @@ function App() {
   const [aiSearchRetryTick, setAiSearchRetryTick] = useState(0)
   const fenInputRef = useRef<HTMLInputElement | null>(null)
   const serverFenInputRef = useRef<HTMLInputElement | null>(null)
+  const layoutInputRef = useRef<HTMLInputElement | null>(null)
+  const serverLayoutInputRef = useRef<HTMLInputElement | null>(null)
   const turnStartAtRef = useRef(0)
   const latestGameRef = useRef(game)
   const latestTimelineRef = useRef(timeline)
@@ -427,6 +796,7 @@ function App() {
   const cellRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const [lastMoveLine, setLastMoveLine] = useState<LineCoords | null>(null)
   const localHydratedRef = useRef(false)
+  const isLayoutModeRef = useRef(isLayoutMode)
 
   const displayedGame = isReplayMode && timeline[replayIndex] ? timeline[replayIndex] : game
   const activeMatch = useMemo(
@@ -445,8 +815,19 @@ function App() {
       : null
   const pendingUndoFromOpponent =
     !!activeMatch && !!myServerSide && !!activeMatch.undoRequest && activeMatch.undoRequest.fromSide !== myServerSide
-  const isMyServerTurn = !!activeMatch && !!myServerSide && activeMatch.status === 'ongoing' && game.turn === myServerSide
+  const activeMatchLayoutReadyBySide = activeMatch?.layoutReadyBySide ?? { red: true, black: true }
+  const activeMatchPendingByMessage = !!activeMatch && activeMatch.mode === 'pvp' && activeMatch.status === 'ongoing' && activeMatch.moves.length === 0 && activeMatch.state.message.includes('等待')
+  const activePvpSetupMatch = !!activeMatch && activeMatch.mode === 'pvp' && activeMatch.status === 'ongoing' && activeMatch.moves.length === 0
+  const activeMatchLayoutPending =
+    !!activeMatch &&
+    activeMatch.mode === 'pvp' &&
+    activeMatch.status === 'ongoing' &&
+    (activeMatch.layoutSetupRequired === true || !activeMatchLayoutReadyBySide.red || !activeMatchLayoutReadyBySide.black || activeMatchPendingByMessage)
+  const myLayoutSubmitted = !!myServerSide && activeMatchLayoutReadyBySide[myServerSide]
+  const isMyServerTurn =
+    !!activeMatch && !!myServerSide && activeMatch.status === 'ongoing' && !activeMatchLayoutPending && game.turn === myServerSide
   const isRankingView = isServerMode && serverView === 'ranking'
+  const serverLayoutEditableSide: Side | undefined = isServerMode && activePvpSetupMatch ? myServerSide ?? undefined : undefined
   const effectiveBoardFlipped = isServerMode ? myServerSide === 'black' : boardFlipped
   const statusDrawBySide = isServerMode && activeMatch ? activeMatch.drawOfferBySide : drawOfferBySide
   const statusUndoText = isServerMode && activeMatch?.undoRequest ? `${sideText(activeMatch.undoRequest.fromSide)} 请求中` : '无'
@@ -459,7 +840,7 @@ function App() {
     black: !aiEnabledBySide.black ? 'AI关闭' : localLastAiEngineBySide.black ? aiEngineText(localLastAiEngineBySide.black) : '未触发',
   }
   const localAiSourceSummary = `红方${localAiSourceBySide.red} / 黑方${localAiSourceBySide.black}`
-  const aiThinkingSide: Side | null = !isReplayMode && !game.winner && !game.isDraw && aiEnabledBySide[game.turn] ? game.turn : null
+  const aiThinkingSide: Side | null = !isLayoutMode && !isReplayMode && !game.winner && !game.isDraw && aiEnabledBySide[game.turn] ? game.turn : null
   const serverAiEnabledBySide: Record<Side, boolean> = {
     red: createMode === 'ai_vs_ai' ? true : createMode === 'vs_ai' ? createAiSide === 'red' : activeMatch ? activeMatch.red.type === 'ai' : true,
     black: createMode === 'ai_vs_ai' ? true : createMode === 'vs_ai' ? createAiSide === 'black' : activeMatch ? activeMatch.black.type === 'ai' : true,
@@ -500,6 +881,10 @@ function App() {
   useEffect(() => {
     latestGameRef.current = game
   }, [game])
+
+  useEffect(() => {
+    isLayoutModeRef.current = isLayoutMode
+  }, [isLayoutMode])
 
   useEffect(() => {
     latestTimelineRef.current = timeline
@@ -545,6 +930,8 @@ function App() {
       setDrawOfferBySide(parsed.drawOfferBySide ?? { red: false, black: false })
       setIsReplayMode(parsed.isReplayMode ?? false)
       setReplayIndex(Math.max(0, Math.min(parsed.replayIndex ?? 0, parsed.timeline.length - 1)))
+      setIsLayoutMode(parsed.isLayoutMode ?? false)
+      setLayoutSelectedPos(null)
     } catch {
       // ignore malformed snapshot
     } finally {
@@ -574,6 +961,33 @@ function App() {
   }, [activeMatchId])
 
   useEffect(() => {
+    const snapshot: ServerCreateFormSnapshot = {
+      mode: createMode,
+      opponent: createOpponent,
+      aiSide: createAiSide,
+    }
+    localStorage.setItem(SERVER_CREATE_FORM_KEY, JSON.stringify(snapshot))
+  }, [createMode, createOpponent, createAiSide])
+
+  useEffect(() => {
+    if (!activeMatch) return
+    setCreateMode(activeMatch.mode)
+
+    if (activeMatch.mode === 'pvp') {
+      const opponentName = myServerSide
+        ? (myServerSide === 'red' ? activeMatch.black.username : activeMatch.red.username) ?? ''
+        : activeMatch.red.username ?? activeMatch.black.username ?? ''
+      setCreateOpponent(opponentName)
+      return
+    }
+
+    if (activeMatch.mode === 'vs_ai') {
+      const aiSide: Side = activeMatch.red.type === 'ai' ? 'red' : 'black'
+      setCreateAiSide(aiSide)
+    }
+  }, [activeMatch, myServerSide])
+
+  useEffect(() => {
     if (!localHydratedRef.current) return
     if (playMode !== 'local') return
 
@@ -592,6 +1006,7 @@ function App() {
       drawOfferBySide,
       isReplayMode,
       replayIndex,
+      isLayoutMode,
     }
     localStorage.setItem(LOCAL_SNAPSHOT_KEY, JSON.stringify(snapshot))
   }, [
@@ -610,6 +1025,7 @@ function App() {
     drawOfferBySide,
     isReplayMode,
     replayIndex,
+    isLayoutMode,
   ])
 
   useEffect(() => {
@@ -778,8 +1194,20 @@ function App() {
     const incomingMySide = getUserSideInMatch(match, currentUserId)
     const incomingMyTurn = !!incomingMySide && match.status === 'ongoing' && match.state.turn === incomingMySide
     const noNewMove = match.state.moveCount === latestGame.moveCount
+    const sameMatch = !prevMatch || prevMatch.id === match.id
+    const layoutStateChanged =
+      !!prevMatch &&
+      prevMatch.id === match.id &&
+      (
+        prevMatch.layoutSetupRequired !== match.layoutSetupRequired ||
+        (prevMatch.layoutReadyBySide?.red ?? true) !== (match.layoutReadyBySide?.red ?? true) ||
+        (prevMatch.layoutReadyBySide?.black ?? true) !== (match.layoutReadyBySide?.black ?? true) ||
+        prevMatch.state.message !== match.state.message
+      )
     const shouldResetTurnStart = !prevMatch || prevMatch.id !== match.id || match.state.turn !== latestGame.turn || !noNewMove
-    const preserveLocalInteraction = incomingMyTurn && noNewMove
+    const preserveLayoutEditing = isLayoutModeRef.current && sameMatch && noNewMove && !layoutStateChanged
+    const preserveOwnTurnSelection = incomingMyTurn && noNewMove && !layoutStateChanged
+    const preserveLocalInteraction = preserveLayoutEditing || preserveOwnTurnSelection
 
     if (!preserveLocalInteraction) {
       setGame(cloneGameState(match.state))
@@ -978,6 +1406,27 @@ function App() {
     } finally {
       setServerBusy(false)
     }
+  }
+
+  const clearActiveMatchFocusOnManualChange = () => {
+    if (!isServerMode) return
+    if (!activeMatchId) return
+    setActiveMatchId(null)
+  }
+
+  const handleCreateModeChange = (mode: 'pvp' | 'vs_ai' | 'ai_vs_ai') => {
+    clearActiveMatchFocusOnManualChange()
+    setCreateMode(mode)
+  }
+
+  const handleCreateOpponentChange = (value: string) => {
+    clearActiveMatchFocusOnManualChange()
+    setCreateOpponent(value)
+  }
+
+  const handleCreateAiSideChange = (side: Side) => {
+    clearActiveMatchFocusOnManualChange()
+    setCreateAiSide(side)
   }
 
   const handleImportFenToServer = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -1242,6 +1691,60 @@ function App() {
 
   const handleCellClick = async (row: number, col: number) => {
     if (isReplayMode) return
+    if (isLayoutMode) {
+      const id = game.board[row]?.[col]
+
+      if (!layoutSelectedPos) {
+        if (!id) return
+        const piece = game.pieces[id]
+        if (!canMoveLayoutPiece(piece, serverLayoutEditableSide)) {
+          setLayoutSelectedPos(null)
+          return
+        }
+        setLayoutSelectedPos({ row, col })
+        if (soundOn) {
+          void playSound('select')
+        }
+        return
+      }
+
+      if (layoutSelectedPos.row === row && layoutSelectedPos.col === col) {
+        setLayoutSelectedPos(null)
+        return
+      }
+
+      if (id) {
+        const piece = game.pieces[id]
+        if (canMoveLayoutPiece(piece, serverLayoutEditableSide)) {
+          setLayoutSelectedPos({ row, col })
+          if (soundOn) {
+            void playSound('select')
+          }
+        } else {
+          setLayoutSelectedPos(null)
+        }
+        return
+      }
+
+      const next = moveLayoutPiece(game, layoutSelectedPos, { row, col }, serverLayoutEditableSide)
+      setLayoutSelectedPos(null)
+      if (next === game) return
+
+      const snapshot = cloneGameState(next)
+      setGame(next)
+      setTimeline([snapshot])
+      setReplayIndex(0)
+      setIsReplayMode(false)
+      setMoveLogs([])
+      setLastThinkBySide({ red: null, black: null })
+      setDrawOfferBySide({ red: false, black: false })
+
+      if (soundOn) {
+        void playSound('move')
+      }
+      return
+    }
+
     if (isServerMode) {
       if (!serverToken || !activeMatch) return
 
@@ -1349,6 +1852,111 @@ function App() {
     setMoveLogs([])
     setLastThinkBySide({ red: null, black: null })
     setDrawOfferBySide({ red: false, black: false })
+    setIsLayoutMode(false)
+    setLayoutSelectedPos(null)
+    turnStartAtRef.current = nowMs()
+  }
+
+  const toggleLayoutMode = async () => {
+    if (isLayoutMode) {
+      const finished = finishLayoutGame(game, serverLayoutEditableSide)
+      if (!finished) {
+        window.alert(serverLayoutEditableSide ? '请先把己方明子摆到标准位置，再点完成布局' : '请先把双方全部明子放到各自标准位置，再点完成布局')
+        return
+      }
+
+      if (isServerMode) {
+        if (!serverToken) {
+          window.alert('请先登录后再进行服务器布局建局')
+          return
+        }
+        if (activePvpSetupMatch) {
+          if (!activeMatch || !myServerSide) {
+            setServerMessage('请选择你参与的人人对战对局后再提交布局')
+            return
+          }
+          setServerBusy(true)
+          setServerMessage('')
+          try {
+            const data = await serverApi.submitLayout(serverToken, activeMatch.id, finished)
+            applyServerMatch(data.match)
+            await refreshRankings()
+            const ready = data.match.layoutReadyBySide ?? { red: true, black: true }
+            if (!ready.red || !ready.black || data.match.layoutSetupRequired) {
+              setServerMessage('己方布局已提交，等待对手完成布局')
+            } else {
+              setServerMessage('双方布局已完成，对局开始')
+            }
+          } catch (error) {
+            setServerMessage(error instanceof Error ? error.message : '提交布局失败')
+            return
+          } finally {
+            setServerBusy(false)
+          }
+          setIsLayoutMode(false)
+          setLayoutSelectedPos(null)
+          turnStartAtRef.current = nowMs()
+          return
+        }
+        setServerBusy(true)
+        setServerMessage('')
+        try {
+          const data = await serverApi.createMatch(serverToken, {
+            mode: createMode,
+            opponentUsername: createMode === 'pvp' ? createOpponent.trim() : undefined,
+            aiSide: createMode === 'vs_ai' ? createAiSide : undefined,
+            aiDepthBySide,
+            aiTimeBudgetBySide,
+            aiEngineBySide: {
+              red: aiPikafishEnabledBySide.red ? 'pikafish' : 'builtin',
+              black: aiPikafishEnabledBySide.black ? 'pikafish' : 'builtin',
+            },
+            aiPikafishMaxThinkBySide,
+            fenSetup: finished,
+          })
+          applyServerMatch(data.match)
+          await refreshRankings()
+          setServerMessage('已根据自定义布局创建在线对局')
+        } catch (error) {
+          setServerMessage(error instanceof Error ? error.message : '自定义布局建局失败')
+          return
+        } finally {
+          setServerBusy(false)
+        }
+      }
+
+      const snapshot = cloneGameState(finished)
+      setGame(finished)
+      setTimeline([snapshot])
+      setReplayIndex(0)
+      setIsReplayMode(false)
+      setMoveLogs([])
+      setLastThinkBySide({ red: null, black: null })
+      setDrawOfferBySide({ red: false, black: false })
+      setIsLayoutMode(false)
+      setLayoutSelectedPos(null)
+      turnStartAtRef.current = nowMs()
+      return
+    }
+
+    const seed = isServerMode && activeMatch ? cloneGameState(activeMatch.initialState ?? activeMatch.state) : undefined
+    const draft = createLayoutDraftGame(serverLayoutEditableSide ? [serverLayoutEditableSide] : ['red', 'black'], seed)
+    const snapshot = cloneGameState(draft)
+    setGame(draft)
+    setTimeline([snapshot])
+    setReplayIndex(0)
+    setIsReplayMode(false)
+    setMoveLogs([])
+    setLastThinkBySide({ red: null, black: null })
+    setDrawOfferBySide({ red: false, black: false })
+    if (isServerMode) {
+      if (!activePvpSetupMatch) {
+        setActiveMatchId(null)
+      }
+      setServerMessage(serverLayoutEditableSide ? '已进入自定义布局建局模式（仅可编辑己方棋子）' : '已进入自定义布局建局模式')
+    }
+    setIsLayoutMode(true)
+    setLayoutSelectedPos(null)
     turnStartAtRef.current = nowMs()
   }
 
@@ -1434,10 +2042,6 @@ function App() {
     setAiPikafishMaxThinkBySide((prev) => ({ ...prev, [side]: parsed }))
   }
 
-  const toggleBoardSide = () => {
-    setBoardFlipped((prev) => !prev)
-  }
-
   const swapLocalSides = () => {
     if (isServerMode) return
 
@@ -1516,6 +2120,129 @@ function App() {
     turnStartAtRef.current = nowMs()
   }
 
+  const exportCustomLayout = () => {
+    const editableSide = isServerMode && activePvpSetupMatch ? myServerSide ?? undefined : undefined
+    if (isServerMode && activePvpSetupMatch && !editableSide) {
+      setServerMessage('仅对局参与方可导出己方布局')
+      return
+    }
+    const layoutData = buildCustomLayoutData(game, editableSide)
+    if (!layoutData) {
+      if (isServerMode) {
+        setServerMessage('当前布局无效，无法导出，请先完成标准摆位')
+      } else {
+        window.alert('当前布局无效，无法导出，请先完成标准摆位')
+      }
+      return
+    }
+
+    const content = JSON.stringify(layoutData, null, 2)
+    const blob = new Blob([content], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    link.href = url
+    link.download = `flipchess-layout-${stamp}.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+
+    if (isServerMode) {
+      setServerMessage('自定义布局已导出')
+    }
+  }
+
+  const importCustomLayout = async (event: ChangeEvent<HTMLInputElement>, target: 'local' | 'server') => {
+    const input = event.target
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+
+    const text = await file.text()
+    const layoutData = parseCustomLayoutData(text)
+    if (!layoutData) {
+      if (target === 'server') {
+        setServerMessage('布局文件无效，导入失败')
+      } else {
+        window.alert('布局文件无效，导入失败')
+      }
+      return
+    }
+
+    if (target === 'server' && !serverToken) {
+      setServerMessage('请先登录后再导入服务器布局')
+      return
+    }
+
+    const editableSide = target === 'server' && activePvpSetupMatch ? myServerSide ?? undefined : undefined
+    if (target === 'server' && activePvpSetupMatch && !editableSide) {
+      setServerMessage('仅对局参与方可导入己方布局')
+      return
+    }
+    let normalizedLayoutData = layoutData
+    if (editableSide) {
+      const oppositeSide: Side = editableSide === 'red' ? 'black' : 'red'
+      if (layoutData.scope === oppositeSide) {
+        const sourceMap = oppositeSide === 'red' ? layoutData.red : layoutData.black
+        if (!sourceMap) {
+          setServerMessage('布局文件无效，导入失败')
+          return
+        }
+        const remapped = remapLayoutMapAcrossSides(sourceMap)
+        if (!remapped) {
+          setServerMessage('布局文件无效，导入失败')
+          return
+        }
+        normalizedLayoutData = editableSide === 'red'
+          ? { version: 1, scope: 'red', red: remapped }
+          : { version: 1, scope: 'black', black: remapped }
+      } else if (layoutData.scope !== 'full' && layoutData.scope !== editableSide) {
+        setServerMessage(`该布局文件不包含己方（${editableSide === 'red' ? '红方' : '黑方'}）布局数据`)
+        return
+      }
+    }
+
+    const importedState = gameFromCustomLayoutData(normalizedLayoutData, editableSide)
+    if (!importedState) {
+      if (target === 'server') {
+        setServerMessage('布局文件无效，导入失败')
+      } else {
+        window.alert('布局文件无效，导入失败')
+      }
+      return
+    }
+
+    const draft = cloneGameState(importedState)
+    draft.selected = null
+    draft.legalMoves = []
+    for (const piece of Object.values(draft.pieces)) {
+      if (!piece.alive || piece.realType === 'king') continue
+      piece.isRevealed = editableSide ? piece.side === editableSide : true
+    }
+
+    const snapshot = cloneGameState(draft)
+    setGame(draft)
+    setTimeline([snapshot])
+    setReplayIndex(0)
+    setIsReplayMode(false)
+    setMoveLogs([])
+    setLastThinkBySide({ red: null, black: null })
+    setDrawOfferBySide({ red: false, black: false })
+    setLayoutSelectedPos(null)
+    setIsLayoutMode(true)
+    turnStartAtRef.current = nowMs()
+
+    if (target === 'server') {
+      if (!activePvpSetupMatch) {
+        setActiveMatchId(null)
+        setServerMessage('已导入自定义布局，请点击“完成布局建局”')
+      } else {
+        setServerMessage('已导入自定义布局，请点击“提交己方布局”')
+      }
+    }
+  }
+
   const declareAgreementDraw = () => {
     const current = latestGameRef.current
     if (current.winner || current.isDraw) return
@@ -1576,7 +2303,9 @@ function App() {
     )
   }, [moveLogs])
 
-  const liveTurnElapsedMs = !isReplayMode && !game.winner && !game.isDraw ? Math.max(0, clockNowMs - turnStartAtRef.current) : 0
+  const liveTurnElapsedMs = !isLayoutMode && !activeMatchLayoutPending && !isReplayMode && !game.winner && !game.isDraw
+    ? Math.max(0, clockNowMs - turnStartAtRef.current)
+    : 0
 
   const liveThinkBySide = useMemo<Record<Side, number | null>>(() => {
     const next: Record<Side, number | null> = { ...lastThinkBySide }
@@ -1634,6 +2363,7 @@ function App() {
     aiSearchTokenRef.current += 1
     const searchToken = aiSearchTokenRef.current
     if (isServerMode) return
+    if (isLayoutMode) return
     const side = game.turn
     if (!aiEnabledBySide[side]) return
     if (isReplayMode) return
@@ -1845,6 +2575,7 @@ function App() {
       })
   }, [
     isServerMode,
+    isLayoutMode,
     aiEnabledBySide,
     aiPikafishEnabledBySide,
     isReplayMode,
@@ -1856,6 +2587,10 @@ function App() {
     aiSearchRetryTick,
     appendAiTrace,
   ])
+
+  const statusMessage = isLayoutMode
+    ? '自定义布局中：先从预置区选择明子，再移动到各自标准位置；点“完成布局”后自动变暗子并开局'
+    : displayedGame.message
 
   return (
     <div className="page">
@@ -1922,16 +2657,16 @@ function App() {
                 {serverUser && serverView === 'match' && (
                   <>
                     <div className="server-row">
-                      <select value={createMode} onChange={(event) => setCreateMode(event.target.value as 'pvp' | 'vs_ai' | 'ai_vs_ai')}>
+                      <select value={createMode} onChange={(event) => handleCreateModeChange(event.target.value as 'pvp' | 'vs_ai' | 'ai_vs_ai')}>
                         <option value="vs_ai">人机对战</option>
                         <option value="pvp">人人对战</option>
                         <option value="ai_vs_ai">双AI对战</option>
                       </select>
                       {createMode === 'pvp' && (
-                        <input value={createOpponent} onChange={(event) => setCreateOpponent(event.target.value)} placeholder="对手用户名" />
+                        <input value={createOpponent} onChange={(event) => handleCreateOpponentChange(event.target.value)} placeholder="对手用户名" />
                       )}
                       {createMode === 'vs_ai' && (
-                        <select value={createAiSide} onChange={(event) => setCreateAiSide(event.target.value as Side)}>
+                        <select value={createAiSide} onChange={(event) => handleCreateAiSideChange(event.target.value as Side)}>
                           <option value="red">AI执红</option>
                           <option value="black">AI执黑</option>
                         </select>
@@ -1939,8 +2674,40 @@ function App() {
                       <button type="button" onClick={handleCreateMatch} disabled={serverBusy}>
                         创建对局
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => void toggleLayoutMode()}
+                        disabled={
+                          serverBusy ||
+                          (createMode === 'pvp' && (!activePvpSetupMatch || !myServerSide || myLayoutSubmitted))
+                        }
+                      >
+                        {createMode === 'pvp'
+                          ? (isLayoutMode ? '提交己方布局' : '自定义布局（提交己方）')
+                          : (isLayoutMode ? '完成布局建局' : '自定义布局建局')}
+                      </button>
                       <button type="button" onClick={() => serverFenInputRef.current?.click()} disabled={serverBusy}>
                         导入FEN建局
+                      </button>
+                      <button
+                        type="button"
+                        onClick={exportCustomLayout}
+                        disabled={
+                          serverBusy ||
+                          (createMode === 'pvp' && (!activePvpSetupMatch || !myServerSide))
+                        }
+                      >
+                        导出布局
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => serverLayoutInputRef.current?.click()}
+                        disabled={
+                          serverBusy ||
+                          (createMode === 'pvp' && (!activePvpSetupMatch || !myServerSide))
+                        }
+                      >
+                        导入布局
                       </button>
                       <input
                         ref={serverFenInputRef}
@@ -1949,14 +2716,21 @@ function App() {
                         style={{ display: 'none' }}
                         onChange={handleImportFenToServer}
                       />
+                      <input
+                        ref={serverLayoutInputRef}
+                        type="file"
+                        accept=".json,application/json,text/plain"
+                        style={{ display: 'none' }}
+                        onChange={(event) => void importCustomLayout(event, 'server')}
+                      />
                     </div>
                     <div className="server-row list">
                       <span>对局记录（{serverMatches.length}）：</span>
                       <div className="match-history-list">
                         {(() => {
                           const sorted = [...serverMatches].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-                          const visible = showAllMatches ? sorted : sorted.slice(0, 5)
-                          const hiddenCount = sorted.length - 5
+                          const visible = showAllMatches ? sorted : sorted.slice(0, 1)
+                          const hiddenCount = sorted.length - 1
                           return (
                             <>
                               {visible.map((item) => {
@@ -1981,7 +2755,7 @@ function App() {
                                   展开更早的 {hiddenCount} 个对局
                                 </button>
                               )}
-                              {showAllMatches && sorted.length > 5 && (
+                              {showAllMatches && sorted.length > 1 && (
                                 <button type="button" className="match-history-expand" onClick={() => setShowAllMatches(false)}>
                                   收起
                                 </button>
@@ -2299,9 +3073,11 @@ function App() {
                   </label>
                 </>
               )}
-              <button type="button" onClick={isServerMode ? toggleBoardSide : swapLocalSides} disabled={isServerMode}>
-                {isServerMode ? `我方在下（${myServerSide === 'black' ? '黑方' : '红方'}）` : '交换棋盘'}
-              </button>
+              {!isServerMode && (
+                <button type="button" onClick={swapLocalSides}>
+                  交换棋盘
+                </button>
+              )}
               {!isServerMode && (
                 <>
                   <button type="button" onClick={undoMove} disabled={timeline.length <= 1 || isReplayMode}>
@@ -2313,17 +3089,35 @@ function App() {
                   <button type="button" onClick={restart}>
                     重新开局
                   </button>
+                  <button type="button" onClick={() => void toggleLayoutMode()} disabled={isReplayMode || game.moveCount > 0}>
+                    {isLayoutMode ? '完成布局' : '自定义布局'}
+                  </button>
                 </>
               )}
               <button type="button" onClick={exportFen} disabled={isServerMode ? !activeMatch : false}>
                 导出FEN
               </button>
               {!isServerMode && (
+                <button type="button" onClick={exportCustomLayout}>
+                  导出布局
+                </button>
+              )}
+              {!isServerMode && (
                 <>
                   <button type="button" onClick={() => fenInputRef.current?.click()}>
                     导入FEN
                   </button>
+                  <button type="button" onClick={() => layoutInputRef.current?.click()}>
+                    导入布局
+                  </button>
                   <input ref={fenInputRef} type="file" accept=".fen,text/plain" style={{ display: 'none' }} onChange={importFen} />
+                  <input
+                    ref={layoutInputRef}
+                    type="file"
+                    accept=".json,application/json,text/plain"
+                    style={{ display: 'none' }}
+                    onChange={(event) => void importCustomLayout(event, 'local')}
+                  />
                 </>
               )}
             </div>}
@@ -2334,7 +3128,7 @@ function App() {
               <section className="status">
                 <div className="server-row">
                   <div>
-                    {displayedGame.message}
+                    {statusMessage}
                     {!isServerMode && aiThinkingSide ? `（${sideText(aiThinkingSide)}AI思考中）` : ''}
                     {` ｜ ${statusSummaryText}`}
                   </div>
@@ -2433,7 +3227,7 @@ function App() {
       {actionsCollapsed && (
         <section className="collapsed-status">
           <div>
-            {displayedGame.message}
+            {statusMessage}
             {!isServerMode && aiThinkingSide ? `（${sideText(aiThinkingSide)}AI思考中）` : ''}
             {` ｜ ${statusSummaryText}`}
           </div>
@@ -2481,16 +3275,20 @@ function App() {
                     cellRefs.current[key] = el
                   }}
                   type="button"
-                  className={`cell ${isSelected(pos) ? 'selected' : ''} ${legalKeySet.has(key) ? 'legal' : ''} ${
+                  className={`cell ${isSelected(pos) ? 'selected' : ''} ${
+                    !isServerMode && isLayoutMode && layoutSelectedPos?.row === r && layoutSelectedPos.col === c ? 'layout-selected' : ''
+                  } ${legalKeySet.has(key) ? 'legal' : ''} ${
                     lastMove && lastMove.from.row === r && lastMove.from.col === c ? 'trail-from' : ''
                   } ${lastMove && lastMove.to.row === r && lastMove.to.col === c ? 'trail-to' : ''}`}
                   disabled={
-                    isReplayMode ||
-                    displayedGame.isDraw ||
-                    !!displayedGame.winner ||
-                    (isServerMode
-                      ? !activeMatch || activeMatch.status !== 'ongoing'
-                      : aiEnabledBySide[displayedGame.turn])
+                    !isLayoutMode && (
+                      isReplayMode ||
+                      displayedGame.isDraw ||
+                      !!displayedGame.winner ||
+                      (isServerMode
+                        ? !activeMatch || activeMatch.status !== 'ongoing'
+                        : aiEnabledBySide[displayedGame.turn])
+                    )
                   }
                   onClick={() => handleCellClick(r, c)}
                 >

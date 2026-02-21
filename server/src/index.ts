@@ -65,6 +65,7 @@ const matchIncludesUser = (match: MatchRecord, userId: string) =>
   match.red.userId === userId || match.black.userId === userId || match.createdByUserId === userId
 
 const normalizeMatchForResponse = async (match: MatchRecord) => {
+  ensureLayoutSetupState(match)
   const [redUser, blackUser] = await Promise.all([
     match.red.userId ? store.findUserById(match.red.userId) : Promise.resolve(undefined),
     match.black.userId ? store.findUserById(match.black.userId) : Promise.resolve(undefined),
@@ -109,6 +110,46 @@ const isGameStateLike = (value: unknown): value is ReturnType<typeof createIniti
 }
 
 const currentSideSlot = (match: MatchRecord): MatchSideSlot => (match.state.turn === 'red' ? match.red : match.black)
+const allLayoutReady = (match: MatchRecord) => !!match.layoutReadyBySide?.red && !!match.layoutReadyBySide?.black
+
+const ensureLayoutSetupState = (match: MatchRecord) => {
+  if (match.mode !== 'pvp') {
+    match.layoutSetupRequired = false
+    match.layoutReadyBySide = { red: true, black: true }
+    return
+  }
+
+  const shouldRequireSetup = match.status === 'ongoing' && match.moves.length === 0
+  if (typeof match.layoutSetupRequired !== 'boolean') {
+    match.layoutSetupRequired = shouldRequireSetup
+  }
+
+  const redReady = match.layoutReadyBySide?.red
+  const blackReady = match.layoutReadyBySide?.black
+  if (typeof redReady !== 'boolean' || typeof blackReady !== 'boolean') {
+    match.layoutReadyBySide = shouldRequireSetup ? { red: false, black: false } : { red: true, black: true }
+  }
+
+  const bothReady = !!match.layoutReadyBySide?.red && !!match.layoutReadyBySide?.black
+
+  // Once both sides are ready, keep the match in started-ready state
+  // even if no move has been made yet.
+  if (bothReady) {
+    match.layoutSetupRequired = false
+  }
+
+  if (shouldRequireSetup && !bothReady && !match.layoutSetupRequired) {
+    match.layoutSetupRequired = true
+    if (match.layoutReadyBySide?.red !== true && match.layoutReadyBySide?.black !== true) {
+      match.layoutReadyBySide = { red: false, black: false }
+    }
+  }
+
+  if (!shouldRequireSetup) {
+    match.layoutSetupRequired = false
+    match.layoutReadyBySide = { red: true, black: true }
+  }
+}
 
 const cloneState = <T>(state: T): T => JSON.parse(JSON.stringify(state)) as T
 
@@ -121,6 +162,51 @@ const userSideInMatch = (match: MatchRecord, userId: string): Side | null => {
 const clearNegotiationState = (match: MatchRecord) => {
   match.drawOfferBySide = { red: false, black: false }
   match.undoRequest = null
+}
+
+const resetStateToStart = (state: MatchRecord['state']) => {
+  state.selected = null
+  state.legalMoves = []
+  state.turn = 'red'
+  state.winner = null
+  state.isDraw = false
+  state.quietMoveCount = 0
+  state.moveCount = 0
+  state.positionHistory = []
+  state.checkHistory = []
+}
+
+const applySideLayoutFromState = (target: MatchRecord['state'], source: MatchRecord['state'], side: Side) => {
+  const positions: Position[] = side === 'red'
+    ? [
+        { row: 9, col: 0 }, { row: 9, col: 1 }, { row: 9, col: 2 }, { row: 9, col: 3 }, { row: 9, col: 5 }, { row: 9, col: 6 }, { row: 9, col: 7 }, { row: 9, col: 8 },
+        { row: 7, col: 1 }, { row: 7, col: 7 },
+        { row: 6, col: 0 }, { row: 6, col: 2 }, { row: 6, col: 4 }, { row: 6, col: 6 }, { row: 6, col: 8 },
+      ]
+    : [
+        { row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 }, { row: 0, col: 5 }, { row: 0, col: 6 }, { row: 0, col: 7 }, { row: 0, col: 8 },
+        { row: 2, col: 1 }, { row: 2, col: 7 },
+        { row: 3, col: 0 }, { row: 3, col: 2 }, { row: 3, col: 4 }, { row: 3, col: 6 }, { row: 3, col: 8 },
+      ]
+
+  for (const pos of positions) {
+    const sourceId = source.board[pos.row]?.[pos.col]
+    if (!sourceId) return false
+    const sourcePiece = source.pieces[sourceId]
+    if (!sourcePiece || !sourcePiece.alive || sourcePiece.side !== side || sourcePiece.realType === 'king') return false
+
+    const targetId = target.board[pos.row]?.[pos.col]
+    if (!targetId) return false
+    const targetPiece = target.pieces[targetId]
+    if (!targetPiece || !targetPiece.alive || targetPiece.side !== side || targetPiece.realType === 'king') return false
+
+    targetPiece.realType = sourcePiece.realType
+    targetPiece.isRevealed = false
+    targetPiece.currentPos = { ...pos }
+    targetPiece.bornPos = { ...pos }
+  }
+
+  return true
 }
 
 const rebuildStateFromMoves = (match: MatchRecord): boolean => {
@@ -496,6 +582,8 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
       aiEngine: resolveAiEngine(aiEngineBySide.black),
       aiPikafishMaxThinkMs: typeof aiPikafishMaxThinkBySide.black === 'number' ? clampPikafishThinkMs(aiPikafishMaxThinkBySide.black) : undefined,
     },
+    layoutSetupRequired: false,
+    layoutReadyBySide: { red: true, black: true },
     initialState: cloneState(initialState),
     state: initialState,
     drawOfferBySide: { red: false, black: false },
@@ -528,6 +616,20 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
       userId: opponent.id,
       aiDepth: clampDepth(aiDepthBySide.black),
       aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.black),
+    }
+    newMatch.layoutSetupRequired = true
+    newMatch.layoutReadyBySide = { red: false, black: false }
+    newMatch.state = {
+      ...newMatch.state,
+      message: '等待双方完成布局',
+      selected: null,
+      legalMoves: [],
+    }
+    newMatch.initialState = {
+      ...newMatch.initialState,
+      message: '等待双方完成布局',
+      selected: null,
+      legalMoves: [],
     }
   } else if (mode === 'vs_ai') {
     const aiSide = (String(req.body?.aiSide ?? 'black') as Side) === 'red' ? 'red' : 'black'
@@ -705,6 +807,11 @@ app.post('/api/matches/:matchId/move', requireAuth, async (req: AuthenticatedReq
     res.status(400).json({ message: 'Match already finished' })
     return
   }
+  ensureLayoutSetupState(match)
+  if (match.mode === 'pvp' && match.layoutSetupRequired && !allLayoutReady(match)) {
+    res.status(400).json({ message: '双方尚未完成自定义布局，暂不能开始' })
+    return
+  }
 
   const slot = currentSideSlot(match)
   if (slot.type !== 'user') {
@@ -739,6 +846,97 @@ app.post('/api/matches/:matchId/move', requireAuth, async (req: AuthenticatedReq
   if (match.status === 'ongoing' && currentSideSlot(match).type === 'ai') {
     scheduleAiTurnIfNeeded(match.id, MIN_AI_MOVE_INTERVAL_MS)
   }
+  res.json({ match: await normalizeMatchForResponse(match) })
+})
+
+app.post('/api/matches/:matchId/layout-submit', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const matchId = normalizeParam(req.params.matchId)
+  if (!matchId) {
+    res.status(400).json({ message: 'Invalid matchId' })
+    return
+  }
+  const match = await store.findMatchById(matchId)
+  if (!match) {
+    res.status(404).json({ message: 'Match not found' })
+    return
+  }
+  if (!req.user) {
+    res.status(401).json({ message: 'User not found' })
+    return
+  }
+  if (match.mode !== 'pvp') {
+    res.status(400).json({ message: 'Only pvp supports two-side layout confirmation' })
+    return
+  }
+  if (match.status !== 'ongoing') {
+    res.status(400).json({ message: 'Match already finished' })
+    return
+  }
+  if (match.moves.length > 0) {
+    res.status(400).json({ message: 'Match already started' })
+    return
+  }
+
+  const side = userSideInMatch(match, req.user.userId)
+  if (!side) {
+    res.status(403).json({ message: 'You are not a player in this match' })
+    return
+  }
+
+  const submittedSetup = req.body?.fenSetup as unknown
+  if (!isGameStateLike(submittedSetup)) {
+    res.status(400).json({ message: 'Invalid fenSetup' })
+    return
+  }
+
+  ensureLayoutSetupState(match)
+
+  if (allLayoutReady(match) && !match.layoutSetupRequired) {
+    res.status(400).json({ message: '双方已完成布局，不能重复提交' })
+    return
+  }
+
+  if (match.layoutReadyBySide?.[side] === true) {
+    res.status(400).json({ message: `${sideName(side)}已提交布局，不能重复提交` })
+    return
+  }
+
+  const source = cloneState(submittedSetup)
+  const nextInitial = cloneState(match.initialState)
+  const nextState = cloneState(match.state)
+  const appliedInitial = applySideLayoutFromState(nextInitial, source, side)
+  const appliedState = applySideLayoutFromState(nextState, source, side)
+  if (!appliedInitial || !appliedState) {
+    res.status(400).json({ message: 'Invalid side layout setup' })
+    return
+  }
+
+  const readyBySide: Record<Side, boolean> = {
+    red: match.layoutReadyBySide?.red === true,
+    black: match.layoutReadyBySide?.black === true,
+  }
+  match.layoutSetupRequired = !allLayoutReady(match)
+  readyBySide[side] = true
+  match.layoutReadyBySide = readyBySide
+  resetStateToStart(nextInitial)
+  resetStateToStart(nextState)
+  const allReady = readyBySide.red && readyBySide.black
+  const waitingSide: Side | null = !readyBySide.red ? 'red' : !readyBySide.black ? 'black' : null
+  nextInitial.message = allReady ? '轮到红方' : waitingSide ? `等待${sideName(waitingSide)}完成布局` : '等待双方完成布局'
+  nextState.message = nextInitial.message
+
+  match.initialState = nextInitial
+  match.state = nextState
+  match.moves = []
+  clearNegotiationState(match)
+  if (allReady) {
+    match.layoutSetupRequired = false
+    match.state.message = '轮到红方'
+    match.initialState.message = '轮到红方'
+  }
+  match.updatedAt = new Date().toISOString()
+
+  await store.upsertMatch(match)
   res.json({ match: await normalizeMatchForResponse(match) })
 })
 
