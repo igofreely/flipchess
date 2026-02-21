@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "setup:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-local-deps.ps1",
     "start:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-local.ps1",
     "stop:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local.ps1",
     "dev": "vite",
