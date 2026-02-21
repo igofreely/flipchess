@@ -1,0 +1,53 @@
+{
+  "name": "flipchess",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-local.ps1",
+    "stop:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local.ps1",
+    "dev": "vite",
+    "server:dev": "tsx watch server/src/index.ts",
+    "server:start": "tsx server/src/index.ts",
+    "server:start:mysql": "bash scripts/server-start-mysql.sh",
+    "maintenance:matches": "tsx scripts/maintenance-matches.ts",
+    "mysql:up": "bash scripts/mysql-up.sh",
+    "mysql:down": "bash scripts/mysql-down.sh",
+    "check:pikafish": "bash scripts/check-pikafish.sh",
+    "test:local": "npm run mysql:up && npm run server:start:mysql",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.15.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.48.0",
+    "vite": "^7.3.1",
+    "vite-plugin-pwa": "^1.2.0"
+  }
+}
