@@ -40,7 +40,7 @@ export interface ServerMoveRecord {
 export interface ServerMatch {
   id: string
   mode: 'pvp' | 'vs_ai' | 'ai_vs_ai'
-  status: 'ongoing' | 'finished'
+  status: 'pending' | 'ongoing' | 'finished'
   createdAt: string
   updatedAt: string
   createdByUserId?: string
@@ -137,6 +137,20 @@ export const serverApi = {
   },
   getMatch(token: string, matchId: string) {
     return request<{ match: ServerMatch }>(`/matches/${matchId}`, undefined, token)
+  },
+  respondInvite(token: string, matchId: string, action: 'accept' | 'reject' | 'cancel') {
+    return request<{ match?: ServerMatch; ok?: boolean; matchId?: string; action?: 'reject' | 'cancel' }>(
+      `/matches/${matchId}/invite-response`,
+      { method: 'POST', body: JSON.stringify({ action }) },
+      token,
+    )
+  },
+  cancelInvite(token: string, matchId: string) {
+    return request<{ ok: boolean; matchId: string; action: 'cancel' }>(
+      `/matches/${matchId}/invite-response`,
+      { method: 'POST', body: JSON.stringify({ action: 'cancel' }) },
+      token,
+    )
   },
   updateMatchAiConfig(
     token: string,

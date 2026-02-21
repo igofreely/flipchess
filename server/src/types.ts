@@ -33,7 +33,7 @@ export interface MoveRecord {
 export interface MatchRecord {
   id: string
   mode: MatchMode
-  status: 'ongoing' | 'finished'
+  status: 'pending' | 'ongoing' | 'finished'
   createdAt: string
   updatedAt: string
   createdByUserId?: string

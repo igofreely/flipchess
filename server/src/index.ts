@@ -617,17 +617,18 @@ app.post('/api/matches', requireAuth, async (req: AuthenticatedRequest, res) => 
       aiDepth: clampDepth(aiDepthBySide.black),
       aiTimeBudgetMs: clampBudget(aiTimeBudgetBySide.black),
     }
+    newMatch.status = 'pending'
     newMatch.layoutSetupRequired = true
     newMatch.layoutReadyBySide = { red: false, black: false }
     newMatch.state = {
       ...newMatch.state,
-      message: '等待双方完成布局',
+      message: '等待对手接受邀请',
       selected: null,
       legalMoves: [],
     }
     newMatch.initialState = {
       ...newMatch.initialState,
-      message: '等待双方完成布局',
+      message: '等待对手接受邀请',
       selected: null,
       legalMoves: [],
     }
@@ -693,6 +694,93 @@ app.get('/api/matches/:matchId', requireAuth, async (req: AuthenticatedRequest, 
     res.status(404).json({ message: 'Match not found' })
     return
   }
+
+  res.json({ match: await normalizeMatchForResponse(match) })
+})
+
+app.post('/api/matches/:matchId/invite-response', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const matchId = normalizeParam(req.params.matchId)
+  if (!matchId) {
+    res.status(400).json({ message: 'Invalid matchId' })
+    return
+  }
+
+  const match = await store.findMatchById(matchId)
+  if (!match) {
+    res.status(404).json({ message: 'Match not found' })
+    return
+  }
+  if (match.mode !== 'pvp') {
+    res.status(400).json({ message: 'Only pvp supports invite response' })
+    return
+  }
+  if (!req.user) {
+    res.status(401).json({ message: 'User not found' })
+    return
+  }
+  if (match.status !== 'pending') {
+    res.status(400).json({ message: '邀请已处理，无需重复操作' })
+    return
+  }
+
+  const inviterId = match.createdByUserId
+  const inviteeId = [match.red.userId, match.black.userId].find((id) => !!id && id !== inviterId)
+
+  const action = String(req.body?.action ?? '').trim()
+  if (action !== 'accept' && action !== 'reject' && action !== 'cancel') {
+    res.status(400).json({ message: 'Invalid action, expected accept|reject|cancel' })
+    return
+  }
+
+  if (action === 'cancel') {
+    if (!inviterId || req.user.userId !== inviterId) {
+      res.status(403).json({ message: 'Only inviter can cancel' })
+      return
+    }
+    const removed = await store.removeMatch(match.id)
+    if (!removed) {
+      res.status(500).json({ message: 'Cancel invite failed' })
+      return
+    }
+    clearAiTurnTimer(match.id)
+    res.json({ ok: true, matchId: match.id, action: 'cancel' })
+    return
+  }
+
+  if (!inviteeId || req.user.userId !== inviteeId) {
+    res.status(403).json({ message: 'Only invited user can respond' })
+    return
+  }
+
+  if (action === 'reject') {
+    const removed = await store.removeMatch(match.id)
+    if (!removed) {
+      res.status(500).json({ message: 'Reject invite failed' })
+      return
+    }
+    clearAiTurnTimer(match.id)
+    res.json({ ok: true, matchId: match.id, action: 'reject' })
+    return
+  }
+
+  match.status = 'ongoing'
+  match.layoutSetupRequired = true
+  match.layoutReadyBySide = { red: false, black: false }
+  match.state = {
+    ...match.state,
+    message: '等待双方完成布局',
+    selected: null,
+    legalMoves: [],
+  }
+  match.initialState = {
+    ...match.initialState,
+    message: '等待双方完成布局',
+    selected: null,
+    legalMoves: [],
+  }
+  clearNegotiationState(match)
+  match.updatedAt = new Date().toISOString()
+  await store.upsertMatch(match)
 
   res.json({ match: await normalizeMatchForResponse(match) })
 })
@@ -804,7 +892,7 @@ app.post('/api/matches/:matchId/move', requireAuth, async (req: AuthenticatedReq
     return
   }
   if (match.status !== 'ongoing') {
-    res.status(400).json({ message: 'Match already finished' })
+    res.status(400).json({ message: match.status === 'pending' ? '对手尚未接受邀请' : 'Match already finished' })
     return
   }
   ensureLayoutSetupState(match)
@@ -869,7 +957,7 @@ app.post('/api/matches/:matchId/layout-submit', requireAuth, async (req: Authent
     return
   }
   if (match.status !== 'ongoing') {
-    res.status(400).json({ message: 'Match already finished' })
+    res.status(400).json({ message: match.status === 'pending' ? '对手尚未接受邀请' : 'Match already finished' })
     return
   }
   if (match.moves.length > 0) {
@@ -952,7 +1040,7 @@ app.post('/api/matches/:matchId/draw-offer', requireAuth, async (req: Authentica
     return
   }
   if (match.status !== 'ongoing') {
-    res.status(400).json({ message: 'Match already finished' })
+    res.status(400).json({ message: match.status === 'pending' ? '对手尚未接受邀请' : 'Match already finished' })
     return
   }
   if (!req.user) {
@@ -1015,7 +1103,7 @@ app.post('/api/matches/:matchId/resign', requireAuth, async (req: AuthenticatedR
     return
   }
   if (match.status !== 'ongoing') {
-    res.status(400).json({ message: 'Match already finished' })
+    res.status(400).json({ message: match.status === 'pending' ? '对手尚未接受邀请' : 'Match already finished' })
     return
   }
   if (!req.user) {
@@ -1061,7 +1149,7 @@ app.post('/api/matches/:matchId/undo-request', requireAuth, async (req: Authenti
     return
   }
   if (match.status !== 'ongoing') {
-    res.status(400).json({ message: 'Match already finished' })
+    res.status(400).json({ message: match.status === 'pending' ? '对手尚未接受邀请' : 'Match already finished' })
     return
   }
   if (!req.user) {

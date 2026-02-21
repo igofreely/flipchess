@@ -732,6 +732,7 @@ function App() {
   const [serverMatches, setServerMatches] = useState<ServerMatch[]>([])
   const [activeMatchId, setActiveMatchId] = useState<string | null>(() => localStorage.getItem(ACTIVE_MATCH_KEY))
   const [showAllMatches, setShowAllMatches] = useState(false)
+  const [showInviteList, setShowInviteList] = useState(false)
   const [rankings, setRankings] = useState<RankingItem[]>([])
   const [authUsername, setAuthUsername] = useState('')
   const [authPassword, setAuthPassword] = useState('')
@@ -873,6 +874,30 @@ function App() {
   const statusBlackPlayer = isServerMode ? serverPlayerText('black') : localPlayerText(aiEnabledBySide.black, localLastAiEngineBySide.black)
   const statusSummaryText = `提和状态：红${statusDrawBySide.red ? '已提' : '未提'} / 黑${statusDrawBySide.black ? '已提' : '未提'} ｜ 悔棋请求：${statusUndoText} ｜ 双方：红方${statusRedPlayer} / 黑方${statusBlackPlayer}`
   const currentUserRank = serverUser ? rankings.findIndex((item) => item.userId === serverUser.id) + 1 : 0
+  const pendingInvites = useMemo(() => {
+    if (!serverUserId) return [] as ServerMatch[]
+    return serverMatches.filter((match) => {
+      if (match.mode !== 'pvp' || match.status !== 'pending') return false
+      if (match.createdByUserId === serverUserId) return false
+      return (match.red.type === 'user' && match.red.userId === serverUserId) || (match.black.type === 'user' && match.black.userId === serverUserId)
+    })
+  }, [serverMatches, serverUserId])
+  const pendingInviteMatches = useMemo(() => {
+    if (!serverUserId) return [] as ServerMatch[]
+    return serverMatches.filter((match) => {
+      if (match.mode !== 'pvp' || match.status !== 'pending') return false
+      return (match.red.type === 'user' && match.red.userId === serverUserId) || (match.black.type === 'user' && match.black.userId === serverUserId)
+    })
+  }, [serverMatches, serverUserId])
+  const historyMatches = useMemo(() => serverMatches.filter((match) => match.status !== 'pending'), [serverMatches])
+  const pendingInviteCount = pendingInvites.length
+  const pendingInviteTotal = pendingInviteMatches.length
+
+  const isInviteeOfPendingMatch = useCallback((match: ServerMatch) => {
+    if (!serverUserId || match.mode !== 'pvp' || match.status !== 'pending') return false
+    if (match.createdByUserId === serverUserId) return false
+    return (match.red.type === 'user' && match.red.userId === serverUserId) || (match.black.type === 'user' && match.black.userId === serverUserId)
+  }, [serverUserId])
 
   const legalKeySet = useMemo(() => {
     return new Set(displayedGame.legalMoves.map((m) => `${m.row}-${m.col}`))
@@ -1334,6 +1359,47 @@ function App() {
     }
   }, [isServerMode, serverToken, activeMatchId, applyServerMatch])
 
+  useEffect(() => {
+    if (!isServerMode || !serverToken) return
+
+    let stopped = false
+    let inFlight = false
+
+    const poll = () => {
+      if (stopped || inFlight) return
+      inFlight = true
+      void serverApi
+        .listMatches(serverToken, true)
+        .then((data) => {
+          if (stopped) return
+          setServerMatches(data.matches)
+          const currentActiveId = activeMatchIdRef.current
+          if (currentActiveId && !data.matches.some((item) => item.id === currentActiveId)) {
+            setActiveMatchId(null)
+          }
+        })
+        .catch(() => {
+          // silent polling failure
+        })
+        .finally(() => {
+          inFlight = false
+        })
+    }
+
+    poll()
+    const timer = window.setInterval(poll, SERVER_POLL_INTERVAL_MS)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
+  }, [isServerMode, serverToken])
+
+  useEffect(() => {
+    if (pendingInviteTotal > 0) {
+      setShowInviteList(true)
+    }
+  }, [pendingInviteTotal])
+
   const handleRegister = async () => {
     setServerBusy(true)
     setServerMessage('')
@@ -1400,9 +1466,32 @@ function App() {
       })
       applyServerMatch(data.match)
       await refreshRankings()
-      setServerMessage('对局创建成功')
+      setServerMessage(createMode === 'pvp' ? '邀请已发送，等待对手同意' : '对局创建成功')
     } catch (error) {
       setServerMessage(error instanceof Error ? error.message : '创建对局失败')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const handleInviteResponse = async (matchId: string, action: 'accept' | 'reject' | 'cancel') => {
+    if (!serverToken) return
+    setServerBusy(true)
+    setServerMessage('')
+    try {
+      const data = await serverApi.respondInvite(serverToken, matchId, action)
+      if (action === 'accept' && data.match) {
+        applyServerMatch(data.match)
+        setServerMessage('已接受邀请，对局已创建并进入布局阶段')
+      } else {
+        setServerMatches((prev) => prev.filter((item) => item.id !== matchId))
+        if (activeMatchIdRef.current === matchId) {
+          setActiveMatchId(null)
+        }
+        setServerMessage(action === 'cancel' ? '已撤销邀请' : '已拒绝邀请')
+      }
+    } catch (error) {
+      setServerMessage(error instanceof Error ? error.message : '处理邀请失败')
     } finally {
       setServerBusy(false)
     }
@@ -2621,6 +2710,10 @@ function App() {
                   ) : serverUser ? (
                     <>
                       <span>当前用户：{serverUser.username}（排名：{currentUserRank > 0 ? `#${currentUserRank}` : '--'}）</span>
+                      <button type="button" className="invite-toggle" onClick={() => setShowInviteList((prev) => !prev)} disabled={serverBusy}>
+                        {showInviteList ? '折叠邀请' : '邀请列表'}
+                        {pendingInviteCount > 0 && <span className="invite-badge">{pendingInviteCount}</span>}
+                      </button>
                       {serverView !== 'ranking' && (
                         <button type="button" onClick={() => void openRankingPage()} disabled={serverBusy}>
                           排行榜
@@ -2656,6 +2749,44 @@ function App() {
                 </div>
                 {serverUser && serverView === 'match' && (
                   <>
+                    {showInviteList && (
+                      <div className="server-row list">
+                        <span>待处理邀请（{pendingInviteCount}）：</span>
+                        <div className="invite-list">
+                          {pendingInviteMatches.length === 0 ? (
+                            <div className="invite-card">
+                              <div className="invite-main">暂无待处理邀请</div>
+                            </div>
+                          ) : (
+                            [...pendingInviteMatches]
+                              .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+                              .map((item) => {
+                                const inviterName = item.red.userId === item.createdByUserId ? item.red.username : item.black.username
+                                const isIncoming = item.createdByUserId !== serverUserId
+                                return (
+                                  <div key={item.id} className="invite-card">
+                                    <div className="invite-main">
+                                      <span>{isIncoming ? `来自：${inviterName ?? '玩家'} 的对局邀请` : '你发起的邀请，等待对手同意'}</span>
+                                      <span className="invite-meta">发起时间：{formatDateTime(item.createdAt)}</span>
+                                    </div>
+                                    <div className="invite-actions">
+                                      {isIncoming && (
+                                        <>
+                                          <button type="button" onClick={() => void handleInviteResponse(item.id, 'accept')} disabled={serverBusy}>同意</button>
+                                          <button type="button" className="danger" onClick={() => void handleInviteResponse(item.id, 'reject')} disabled={serverBusy}>拒绝</button>
+                                        </>
+                                      )}
+                                      {!isIncoming && (
+                                        <button type="button" className="danger" onClick={() => void handleInviteResponse(item.id, 'cancel')} disabled={serverBusy}>撤销邀请</button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <div className="server-row">
                       <select value={createMode} onChange={(event) => handleCreateModeChange(event.target.value as 'pvp' | 'vs_ai' | 'ai_vs_ai')}>
                         <option value="vs_ai">人机对战</option>
@@ -2725,10 +2856,10 @@ function App() {
                       />
                     </div>
                     <div className="server-row list">
-                      <span>对局记录（{serverMatches.length}）：</span>
+                      <span>对局记录（{historyMatches.length}）：</span>
                       <div className="match-history-list">
                         {(() => {
-                          const sorted = [...serverMatches].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+                          const sorted = [...historyMatches].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
                           const visible = showAllMatches ? sorted : sorted.slice(0, 1)
                           const hiddenCount = sorted.length - 1
                           return (
@@ -2736,9 +2867,10 @@ function App() {
                               {visible.map((item) => {
                                 const redLabel = item.red.type === 'user' ? (item.red.username ?? '玩家') : `AI(${aiEngineText(item.red.aiEngine)})`
                                 const blackLabel = item.black.type === 'user' ? (item.black.username ?? '玩家') : `AI(${aiEngineText(item.black.aiEngine)})`
+                                const canRespondInvite = isInviteeOfPendingMatch(item)
                                 const statusLabel = item.status === 'finished'
                                   ? item.result === 'red' ? '红胜' : item.result === 'black' ? '黑胜' : item.result === 'draw' ? '平局' : '已结束'
-                                  : '进行中'
+                                  : item.status === 'pending' ? '待接受邀请' : '进行中'
                                 return (
                                   <div key={item.id} className={`match-history-card${item.id === activeMatchId ? ' active' : ''}`}>
                                     <div className="match-history-main" onClick={() => void openMatch(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') void openMatch(item.id) }}>
@@ -2746,6 +2878,12 @@ function App() {
                                       <span className={`match-history-status ${item.status}`}>{statusLabel}</span>
                                       <span className="match-history-time">开始 {formatDateTime(item.createdAt)}{item.status === 'finished' ? ` · 结束 ${formatDateTime(item.updatedAt)}` : ''}</span>
                                     </div>
+                                    {canRespondInvite && (
+                                      <>
+                                        <button type="button" onClick={() => void handleInviteResponse(item.id, 'accept')} disabled={serverBusy}>同意</button>
+                                        <button type="button" className="danger" onClick={() => void handleInviteResponse(item.id, 'reject')} disabled={serverBusy}>拒绝</button>
+                                      </>
+                                    )}
                                     <button type="button" className="danger" onClick={() => void handleDeleteMatch(item.id)} title="删除该对局">删除</button>
                                   </div>
                                 )
