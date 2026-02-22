@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import './App.css'
-import { createInitialGame, getPieceLabel, playMove, selectCell } from './game/engine'
+import { createInitialGame, getAllLegalMoves, getPieceLabel, playMove, selectCell } from './game/engine'
 import type { GameState, Piece, PieceType, Position, Side } from './game/types'
 import { createWorkerAiProvider, type AiProvider } from './game/ai-provider'
 import { createHttpAiProvider } from './game/ai-provider-http'
@@ -33,6 +33,16 @@ interface MoveLogItem {
   thinkMs: number
 }
 
+interface PendingAiRevealChoice {
+  side: Side
+  move: { from: Position; to: Position }
+  engine?: 'pikafish' | 'builtin'
+  sourceGame: GameState
+  stagedGame: GameState
+  movedPieceId: string
+  thinkMs: number
+}
+
 interface LineCoords {
   x1: number
   y1: number
@@ -42,6 +52,7 @@ interface LineCoords {
 
 const BOARD_ROWS = 10
 const BOARD_COLS = 9
+const PIECE_TYPE_ORDER: PieceType[] = ['rook', 'horse', 'elephant', 'advisor', 'cannon', 'pawn', 'king']
 
 const sideText = (side: Side) => (side === 'red' ? '红方' : '黑方')
 const nowMs = () => Date.now()
@@ -83,6 +94,66 @@ const swapLocalGameStateSides = (state: GameState): GameState => {
 }
 
 const posText = (pos: Position) => `(${pos.row},${pos.col})`
+
+const pieceTypeText = (type: PieceType, side: Side) => {
+  const map: Record<PieceType, string> = {
+    king: '将',
+    advisor: '士',
+    elephant: '象',
+    horse: '马',
+    rook: '车',
+    cannon: '炮',
+    pawn: side === 'red' ? '兵' : '卒',
+  }
+  return map[type]
+}
+
+const buildEmptyTypeCounts = (): Record<PieceType, number> => ({
+  king: 0,
+  advisor: 0,
+  elephant: 0,
+  horse: 0,
+  rook: 0,
+  cannon: 0,
+  pawn: 0,
+})
+
+const hiddenTypeCountsForSide = (state: GameState, side: Side): Record<PieceType, number> => {
+  const counts = buildEmptyTypeCounts()
+  for (const piece of Object.values(state.pieces)) {
+    if (!piece.alive || piece.side !== side || piece.isRevealed) continue
+    counts[piece.realType] += 1
+  }
+  return counts
+}
+
+const applyHiddenRevealChoice = (state: GameState, from: Position, chosenType: PieceType, expectedSide?: Side): GameState | null => {
+  const pieceId = state.board[from.row]?.[from.col]
+  if (!pieceId) return null
+
+  const source = state.pieces[pieceId]
+  const side = expectedSide ?? state.turn
+  if (!source || !source.alive || source.isRevealed || source.side !== side) return null
+  if (source.realType === chosenType) return state
+
+  const next = cloneGameState(state)
+  const nextSource = next.pieces[pieceId]
+  const swapTarget = Object.values(next.pieces).find(
+    (piece) =>
+      piece.id !== pieceId &&
+      piece.alive &&
+      !piece.isRevealed &&
+      piece.side === nextSource.side &&
+      piece.realType === chosenType,
+  )
+
+  if (!swapTarget) return null
+
+  const originalType = nextSource.realType
+  nextSource.realType = chosenType
+  swapTarget.realType = originalType
+  return next
+}
 
 const decodeBase64Utf8 = (base64: string) => {
   const binary = atob(base64)
@@ -279,6 +350,46 @@ const isGameStateLike = (value: unknown): value is GameState => {
   )
 }
 
+const evaluateTerminalResult = (state: GameState): GameState => {
+  if (state.winner || state.isDraw) return state
+
+  const next = cloneGameState(state)
+  const redKingAlive = Object.values(next.pieces).some((piece) => piece.alive && piece.side === 'red' && piece.realType === 'king')
+  const blackKingAlive = Object.values(next.pieces).some((piece) => piece.alive && piece.side === 'black' && piece.realType === 'king')
+
+  if (!redKingAlive && blackKingAlive) {
+    next.winner = 'black'
+    next.isDraw = false
+    next.message = '黑方吃将获胜'
+    return next
+  }
+
+  if (!blackKingAlive && redKingAlive) {
+    next.winner = 'red'
+    next.isDraw = false
+    next.message = '红方吃将获胜'
+    return next
+  }
+
+  if (next.quietMoveCount >= 120) {
+    next.winner = null
+    next.isDraw = true
+    next.message = '达到自然限着（120步无吃子），判和棋'
+    return next
+  }
+
+  const legalMoves = getAllLegalMoves(next, next.turn)
+  if (legalMoves.length === 0) {
+    const winner: Side = next.turn === 'red' ? 'black' : 'red'
+    next.winner = winner
+    next.isDraw = false
+    next.message = `${sideText(winner)}获胜`
+    return next
+  }
+
+  return next
+}
+
 
 
 const formatDurationMs = (ms: number) => `${(Math.max(0, ms) / 1000).toFixed(1)}s`
@@ -338,6 +449,7 @@ interface LocalSnapshot {
   isReplayMode: boolean
   replayIndex: number
   isLayoutMode?: boolean
+  localRevealChoiceEnabled?: boolean
 }
 
 interface ServerCreateFormSnapshot {
@@ -722,6 +834,11 @@ function App() {
   const [isLayoutMode, setIsLayoutMode] = useState(false)
   const [layoutSelectedPos, setLayoutSelectedPos] = useState<Position | null>(null)
   const [actionsCollapsed, setActionsCollapsed] = useState(false)
+  const [localRevealChoiceEnabled, setLocalRevealChoiceEnabled] = useState(false)
+  const [pendingRevealType, setPendingRevealType] = useState<PieceType | null>(null)
+  const [lastPreferredRevealType, setLastPreferredRevealType] = useState<PieceType | null>(null)
+  const [localRevealChoiceMessage, setLocalRevealChoiceMessage] = useState('')
+  const [pendingAiRevealChoice, setPendingAiRevealChoice] = useState<PendingAiRevealChoice | null>(null)
   const [playMode, setPlayMode] = useState<'local' | 'server'>(() => {
     const raw = localStorage.getItem(PLAY_MODE_KEY)
     return raw === 'server' ? 'server' : 'local'
@@ -903,6 +1020,161 @@ function App() {
     return new Set(displayedGame.legalMoves.map((m) => `${m.row}-${m.col}`))
   }, [displayedGame.legalMoves])
 
+  const selectedLivePiece = useMemo(() => {
+    if (!game.selected) return null
+    const id = game.board[game.selected.row]?.[game.selected.col]
+    return id ? game.pieces[id] ?? null : null
+  }, [game])
+
+  const revealPickerSide: Side = pendingAiRevealChoice?.side ?? game.turn
+  const localHiddenTypeCounts = useMemo(() => hiddenTypeCountsForSide(game, revealPickerSide), [game, revealPickerSide])
+
+  const shouldShowRevealPickerForHuman =
+    !isServerMode &&
+    !isReplayMode &&
+    !isLayoutMode &&
+    localRevealChoiceEnabled &&
+    !game.winner &&
+    !game.isDraw &&
+    !!game.selected &&
+    !!selectedLivePiece &&
+    !selectedLivePiece.isRevealed &&
+    selectedLivePiece.side === game.turn &&
+    !aiEnabledBySide[game.turn]
+
+  const shouldShowRevealPickerForAi =
+    !isServerMode &&
+    !isReplayMode &&
+    !isLayoutMode &&
+    localRevealChoiceEnabled &&
+    !game.winner &&
+    !game.isDraw &&
+    !!pendingAiRevealChoice
+
+  const shouldShowRevealPicker = shouldShowRevealPickerForHuman || shouldShowRevealPickerForAi
+
+  const revealCandidateTypes = useMemo(
+    () => (shouldShowRevealPicker ? PIECE_TYPE_ORDER.filter((type) => localHiddenTypeCounts[type] > 0) : []),
+    [shouldShowRevealPicker, localHiddenTypeCounts],
+  )
+
+  const finalizeAiMove = useCallback((params: {
+    currentGame: GameState
+    next: GameState
+    side: Side
+    move: { from: Position; to: Position }
+    engine?: 'pikafish' | 'builtin'
+    thinkMs: number
+  }) => {
+    const { currentGame, next, side, move, engine, thinkMs } = params
+    const movedId = next.board[move.to.row]?.[move.to.col]
+    const pieceText = movedId ? getPieceLabel(next.pieces[movedId]) : '子'
+
+    setGame(next)
+    const nextTimeline = [...latestTimelineRef.current, cloneGameState(next)]
+    setTimeline(nextTimeline)
+    setReplayIndex(nextTimeline.length - 1)
+    turnStartAtRef.current = nowMs()
+    setDrawOfferBySide({ red: false, black: false })
+
+    const logItem: MoveLogItem = {
+      id: next.moveCount,
+      side,
+      actor: 'ai',
+      aiEngine: engine ?? 'builtin',
+      pieceText,
+      from: { ...move.from },
+      to: { ...move.to },
+      thinkMs,
+    }
+    setMoveLogs((prev) => {
+      const nextLogs = [...prev, logItem]
+      setLastThinkBySide(computeLastThinkMap(nextLogs))
+      return nextLogs
+    })
+
+    if (!soundOnRef.current) return
+
+    const capture = aliveCount(next) < aliveCount(currentGame)
+    const checkedNow = next.message.includes('被将军') && !currentGame.message.includes('被将军')
+    const wonNow = !currentGame.winner && !!next.winner
+
+    if (wonNow) {
+      void playSound('win')
+    } else if (checkedNow) {
+      void playSound('check')
+    } else if (capture) {
+      void playSound('capture')
+    } else {
+      void playSound('move')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!shouldShowRevealPicker) return
+    if (pendingRevealType) return
+    const defaultType =
+      lastPreferredRevealType && revealCandidateTypes.includes(lastPreferredRevealType)
+        ? lastPreferredRevealType
+        : revealCandidateTypes[0] ?? null
+    if (defaultType) {
+      setPendingRevealType(defaultType)
+    }
+  }, [shouldShowRevealPicker, pendingRevealType, revealCandidateTypes, lastPreferredRevealType])
+
+  useEffect(() => {
+    if (shouldShowRevealPicker) {
+      if (pendingRevealType && localHiddenTypeCounts[pendingRevealType] <= 0) {
+        setPendingRevealType(null)
+      }
+      return
+    }
+    if (pendingRevealType !== null) {
+      setPendingRevealType(null)
+    }
+    if (localRevealChoiceMessage) {
+      setLocalRevealChoiceMessage('')
+    }
+  }, [shouldShowRevealPicker, pendingRevealType, localHiddenTypeCounts, localRevealChoiceMessage])
+
+  const handleRevealTypePick = (pieceType: PieceType) => {
+    setPendingRevealType(pieceType)
+    setLastPreferredRevealType(pieceType)
+    setLocalRevealChoiceMessage('')
+
+    if (!pendingAiRevealChoice) return
+
+    const stagedNow = latestGameRef.current
+    if (stagedNow.board[pendingAiRevealChoice.move.to.row]?.[pendingAiRevealChoice.move.to.col] !== pendingAiRevealChoice.movedPieceId) {
+      setPendingAiRevealChoice(null)
+      setLocalRevealChoiceMessage('该步落子已失效，请等待AI重新计算')
+      return
+    }
+
+    const moveBase = applyHiddenRevealChoice(stagedNow, pendingAiRevealChoice.move.to, pieceType, pendingAiRevealChoice.side)
+    if (!moveBase) {
+      setLocalRevealChoiceMessage('当前类型已不可用，请重新选择')
+      return
+    }
+
+    const moved = moveBase.pieces[pendingAiRevealChoice.movedPieceId]
+    if (moved) {
+      moved.isRevealed = true
+    }
+
+    finalizeAiMove({
+      currentGame: pendingAiRevealChoice.sourceGame,
+      next: moveBase,
+      side: pendingAiRevealChoice.side,
+      move: pendingAiRevealChoice.move,
+      engine: pendingAiRevealChoice.engine,
+      thinkMs: pendingAiRevealChoice.thinkMs,
+    })
+    setPendingAiRevealChoice(null)
+    setPendingRevealType(null)
+    setLocalRevealChoiceMessage('')
+  }
+
   useEffect(() => {
     latestGameRef.current = game
   }, [game])
@@ -956,6 +1228,7 @@ function App() {
       setIsReplayMode(parsed.isReplayMode ?? false)
       setReplayIndex(Math.max(0, Math.min(parsed.replayIndex ?? 0, parsed.timeline.length - 1)))
       setIsLayoutMode(parsed.isLayoutMode ?? false)
+      setLocalRevealChoiceEnabled(parsed.localRevealChoiceEnabled ?? false)
       setLayoutSelectedPos(null)
     } catch {
       // ignore malformed snapshot
@@ -1032,6 +1305,7 @@ function App() {
       isReplayMode,
       replayIndex,
       isLayoutMode,
+      localRevealChoiceEnabled,
     }
     localStorage.setItem(LOCAL_SNAPSHOT_KEY, JSON.stringify(snapshot))
   }, [
@@ -1051,6 +1325,7 @@ function App() {
     isReplayMode,
     replayIndex,
     isLayoutMode,
+    localRevealChoiceEnabled,
   ])
 
   useEffect(() => {
@@ -1780,6 +2055,7 @@ function App() {
 
   const handleCellClick = async (row: number, col: number) => {
     if (isReplayMode) return
+    if (pendingAiRevealChoice) return
     if (isLayoutMode) {
       const id = game.board[row]?.[col]
 
@@ -1873,12 +2149,39 @@ function App() {
     if (aiEnabledBySide[game.turn]) return
 
     const prev = game
-    const next = selectCell(prev, { row, col })
+    const selectedBeforeMove = prev.selected ? { ...prev.selected } : null
+    const selectedIdBeforeMove = selectedBeforeMove ? prev.board[selectedBeforeMove.row]?.[selectedBeforeMove.col] : null
+    const selectedPieceBeforeMove = selectedIdBeforeMove ? prev.pieces[selectedIdBeforeMove] : null
+    const movingSelectedPiece =
+      !!selectedBeforeMove &&
+      prev.legalMoves.some((m) => m.row === row && m.col === col) &&
+      !!selectedPieceBeforeMove &&
+      selectedPieceBeforeMove.side === prev.turn
+
+    let moveBase = prev
+    if (localRevealChoiceEnabled && movingSelectedPiece && selectedPieceBeforeMove && !selectedPieceBeforeMove.isRevealed) {
+      if (!pendingRevealType) {
+        setLocalRevealChoiceMessage('请先在棋盘下方选择翻开棋子类型')
+        return
+      }
+      setLastPreferredRevealType(pendingRevealType)
+      const nextBase = applyHiddenRevealChoice(prev, selectedBeforeMove, pendingRevealType)
+      if (!nextBase) {
+        setPendingRevealType(null)
+        setLocalRevealChoiceMessage('当前类型已不可用，请重新选择')
+        return
+      }
+      moveBase = nextBase
+    }
+
+    const next = selectCell(moveBase, { row, col })
     const moved = next.moveCount > prev.moveCount
 
     setGame(next)
 
     if (moved) {
+      setPendingRevealType(null)
+      setLocalRevealChoiceMessage('')
       const snapshot = cloneGameState(next)
       const nextTimeline = [...timeline, snapshot]
       setTimeline(nextTimeline)
@@ -1906,6 +2209,12 @@ function App() {
           setLastThinkBySide(computeLastThinkMap(nextLogs))
           return nextLogs
         })
+      }
+    } else {
+      const selectedUnchanged = !!prev.selected && !!next.selected && prev.selected.row === next.selected.row && prev.selected.col === next.selected.col
+      if (!selectedUnchanged) {
+        setPendingRevealType(null)
+        setLocalRevealChoiceMessage('')
       }
     }
 
@@ -1943,6 +2252,7 @@ function App() {
     setDrawOfferBySide({ red: false, black: false })
     setIsLayoutMode(false)
     setLayoutSelectedPos(null)
+    setPendingAiRevealChoice(null)
     turnStartAtRef.current = nowMs()
   }
 
@@ -2060,6 +2370,7 @@ function App() {
     setMoveLogs(nextLogs)
     setLastThinkBySide(computeLastThinkMap(nextLogs))
     setDrawOfferBySide({ red: false, black: false })
+    setPendingAiRevealChoice(null)
     turnStartAtRef.current = nowMs()
   }
 
@@ -2070,6 +2381,7 @@ function App() {
       setGame(latest)
       setReplayIndex(timeline.length - 1)
       setIsReplayMode(false)
+      setPendingAiRevealChoice(null)
       turnStartAtRef.current = nowMs()
       return
     }
@@ -2094,6 +2406,18 @@ function App() {
         void playSound('toggle')
       }
       return next
+    })
+  }
+
+  const toggleLocalRevealChoice = () => {
+    setLocalRevealChoiceEnabled((prevEnabled) => {
+      const nextEnabled = !prevEnabled
+      if (!nextEnabled) {
+        setPendingRevealType(null)
+        setPendingAiRevealChoice(null)
+        setLocalRevealChoiceMessage('')
+      }
+      return nextEnabled
     })
   }
 
@@ -2160,7 +2484,13 @@ function App() {
   const exportFen = () => {
     // Export the full timeline (one FEN per line) so replay is possible on import
     const fenLines = timeline.map((s) => gameStateToFen(s))
-    const fenContent = fenLines.join('\n')
+    const lastState = timeline[timeline.length - 1] ?? game
+    const resultMeta = {
+      winner: lastState.winner,
+      isDraw: lastState.isDraw,
+      message: lastState.message,
+    }
+    const fenContent = [...fenLines, `# RESULT ${JSON.stringify(resultMeta)}`].join('\n')
     const blob = new Blob([fenContent], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -2182,7 +2512,24 @@ function App() {
 
     const text = await file.text()
     // Support multi-line FEN (full timeline) or single-line FEN
-    const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0)
+    const rawLines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0)
+    const lines: string[] = []
+    let resultMeta: { winner?: unknown; isDraw?: unknown; message?: unknown } | null = null
+
+    for (const line of rawLines) {
+      if (!line.startsWith('#')) {
+        lines.push(line)
+        continue
+      }
+      if (line.startsWith('# RESULT ')) {
+        try {
+          resultMeta = JSON.parse(line.slice('# RESULT '.length)) as { winner?: unknown; isDraw?: unknown; message?: unknown }
+        } catch {
+          // ignore malformed result comment
+        }
+      }
+    }
+
     if (lines.length === 0) {
       window.alert('FEN 格式无效，无法导入')
       return
@@ -2195,10 +2542,25 @@ function App() {
         window.alert('FEN 格式无效，无法导入')
         return
       }
-      importedTimeline.push(parsed)
+      importedTimeline.push(evaluateTerminalResult(parsed))
     }
 
-    const lastState = importedTimeline[importedTimeline.length - 1]
+    const lastIndex = importedTimeline.length - 1
+    const lastState = cloneGameState(importedTimeline[lastIndex])
+    if (resultMeta) {
+      const winner = resultMeta.winner === 'red' || resultMeta.winner === 'black' ? resultMeta.winner : null
+      const isDraw = resultMeta.isDraw === true
+      const message = typeof resultMeta.message === 'string' ? resultMeta.message.trim() : ''
+      if (winner || isDraw) {
+        lastState.winner = winner
+        lastState.isDraw = isDraw
+        if (message) {
+          lastState.message = message
+        }
+      }
+    }
+    importedTimeline[lastIndex] = lastState
+
     setGame(cloneGameState(lastState))
     setTimeline(importedTimeline)
     setReplayIndex(importedTimeline.length - 1)
@@ -2455,6 +2817,7 @@ function App() {
     if (isLayoutMode) return
     const side = game.turn
     if (!aiEnabledBySide[side]) return
+    if (pendingAiRevealChoice) return
     if (isReplayMode) return
     if (game.winner || game.isDraw) return
     const pikafishEnabled = aiPikafishEnabledBySide[side]
@@ -2571,51 +2934,58 @@ function App() {
       const currentGame = latestGameRef.current
       if (currentGame !== snapshot) return
 
+      const movingId = currentGame.board[data.move.from.row]?.[data.move.from.col]
+      const movingPiece = movingId ? currentGame.pieces[movingId] : null
+      const movingHidden = !!movingPiece && movingPiece.alive && !movingPiece.isRevealed && movingPiece.side === data.side
+      const thinkMs = Math.max(1, nowMs() - turnStartAtRef.current)
+
+      if (localRevealChoiceEnabled && movingHidden) {
+        const counts = hiddenTypeCountsForSide(currentGame, data.side)
+        const candidates = PIECE_TYPE_ORDER.filter((type) => counts[type] > 0)
+        if (candidates.length > 0) {
+          const stagedAfterMove = playMove(currentGame, data.move.from, data.move.to)
+          if (stagedAfterMove === currentGame) return
+
+          const movedPieceId = stagedAfterMove.board[data.move.to.row]?.[data.move.to.col]
+          if (!movedPieceId) return
+
+          const stagedHidden = cloneGameState(stagedAfterMove)
+          const stagedMovedPiece = stagedHidden.pieces[movedPieceId]
+          if (!stagedMovedPiece) return
+          stagedMovedPiece.isRevealed = false
+
+          const suggestedType =
+            lastPreferredRevealType && candidates.includes(lastPreferredRevealType)
+              ? lastPreferredRevealType
+              : candidates[0]
+
+          setGame(stagedHidden)
+          setPendingAiRevealChoice({
+            side: data.side,
+            move: { from: { ...data.move.from }, to: { ...data.move.to } },
+            engine: data.engine,
+            sourceGame: currentGame,
+            stagedGame: stagedHidden,
+            movedPieceId,
+            thinkMs,
+          })
+          setPendingRevealType(suggestedType)
+          setLocalRevealChoiceMessage('AI已走子，请在下方选择翻开棋子类型')
+          return
+        }
+      }
+
       const next = playMove(currentGame, data.move.from, data.move.to)
       if (next === currentGame) return
 
-      const thinkMs = Math.max(1, nowMs() - turnStartAtRef.current)
-      const movedId = next.board[data.move.to.row]?.[data.move.to.col]
-      const pieceText = movedId ? getPieceLabel(next.pieces[movedId]) : '子'
-
-      setGame(next)
-      const nextTimeline = [...latestTimelineRef.current, cloneGameState(next)]
-      setTimeline(nextTimeline)
-      setReplayIndex(nextTimeline.length - 1)
-      turnStartAtRef.current = nowMs()
-      setDrawOfferBySide({ red: false, black: false })
-
-      const logItem: MoveLogItem = {
-        id: next.moveCount,
+      finalizeAiMove({
+        currentGame,
+        next,
         side: data.side,
-        actor: 'ai',
-        aiEngine: data.engine ?? 'builtin',
-        pieceText,
-        from: { ...data.move.from },
-        to: { ...data.move.to },
+        move: data.move,
+        engine: data.engine,
         thinkMs,
-      }
-      setMoveLogs((prev) => {
-        const nextLogs = [...prev, logItem]
-        setLastThinkBySide(computeLastThinkMap(nextLogs))
-        return nextLogs
       })
-
-      if (!soundOnRef.current) return
-
-      const capture = aliveCount(next) < aliveCount(currentGame)
-      const checkedNow = next.message.includes('被将军') && !currentGame.message.includes('被将军')
-      const wonNow = !currentGame.winner && !!next.winner
-
-      if (wonNow) {
-        void playSound('win')
-      } else if (checkedNow) {
-        void playSound('check')
-      } else if (capture) {
-        void playSound('capture')
-      } else {
-        void playSound('move')
-      }
     }
 
     void searchPromise
@@ -2675,6 +3045,10 @@ function App() {
     aiProviderMode,
     aiSearchRetryTick,
     appendAiTrace,
+    localRevealChoiceEnabled,
+    lastPreferredRevealType,
+    pendingAiRevealChoice,
+    finalizeAiMove,
   ])
 
   const statusMessage = isLayoutMode
@@ -3218,6 +3592,9 @@ function App() {
               )}
               {!isServerMode && (
                 <>
+                  <button type="button" onClick={toggleLocalRevealChoice}>
+                    自选翻子：{localRevealChoiceEnabled ? '开' : '关'}
+                  </button>
                   <button type="button" onClick={undoMove} disabled={timeline.length <= 1 || isReplayMode}>
                     悔棋
                   </button>
@@ -3405,6 +3782,10 @@ function App() {
               const key = `${r}-${c}`
               const pos = { row: r, col: c }
               const piece = id ? displayedGame.pieces[id] : null
+              const isPendingRevealTarget =
+                !!pendingAiRevealChoice &&
+                pendingAiRevealChoice.move.to.row === r &&
+                pendingAiRevealChoice.move.to.col === c
 
               return (
                 <button
@@ -3417,10 +3798,13 @@ function App() {
                     !isServerMode && isLayoutMode && layoutSelectedPos?.row === r && layoutSelectedPos.col === c ? 'layout-selected' : ''
                   } ${legalKeySet.has(key) ? 'legal' : ''} ${
                     lastMove && lastMove.from.row === r && lastMove.from.col === c ? 'trail-from' : ''
-                  } ${lastMove && lastMove.to.row === r && lastMove.to.col === c ? 'trail-to' : ''}`}
+                  } ${lastMove && lastMove.to.row === r && lastMove.to.col === c ? 'trail-to' : ''} ${
+                    isPendingRevealTarget ? 'reveal-target' : ''
+                  }`}
                   disabled={
                     !isLayoutMode && (
                       isReplayMode ||
+                      !!pendingAiRevealChoice ||
                       displayedGame.isDraw ||
                       !!displayedGame.winner ||
                       (isServerMode
@@ -3443,6 +3827,27 @@ function App() {
           )}
           </div>
         </main>
+      )}
+
+      {!isRankingView && !isServerMode && shouldShowRevealPicker && (
+        <section className="reveal-picker" aria-label="暗子翻开类型选择">
+          <div className="reveal-picker-title">
+            选择翻开棋子（{sideText(revealPickerSide)}）{pendingAiRevealChoice ? ' · 当前走法由AI决定' : ''}
+          </div>
+          <div className="reveal-picker-list">
+            {revealCandidateTypes.map((pieceType) => (
+              <button
+                key={`reveal-${pieceType}`}
+                type="button"
+                className={`reveal-piece ${pendingRevealType === pieceType ? 'active' : ''}`}
+                onClick={() => handleRevealTypePick(pieceType)}
+              >
+                {pieceTypeText(pieceType, revealPickerSide)} × {localHiddenTypeCounts[pieceType]}
+              </button>
+            ))}
+          </div>
+          {localRevealChoiceMessage && <div className="reveal-picker-message">{localRevealChoiceMessage}</div>}
+        </section>
       )}
 
       {!isRankingView && (
