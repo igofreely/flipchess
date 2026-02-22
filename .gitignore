@@ -29,3 +29,4 @@ dist-ssr
 
 # Large binary files
 *.nnue
+!third_party/Pikafish-jieqi-old/src/pikafish.nnue

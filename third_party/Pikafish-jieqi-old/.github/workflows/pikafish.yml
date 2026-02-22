@@ -1,0 +1,177 @@
+name: Pikafish
+
+on:
+  push:
+    branches:
+      - jieqi_old
+
+jobs:
+  windows:
+    strategy:
+      matrix:
+        arch: ["-bmi2", "-modern"]
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build
+        shell: bash
+        run: |
+          cd src
+          make clean
+          make -j build COMP=mingw ARCH=x86-64${{ matrix.arch }} \
+               EXE=pikafish${{ matrix.arch }}.exe
+          strip pikafish${{ matrix.arch }}.exe
+
+      - name: Package artifact files
+        run: |
+          mkdir windows
+          cp src/pikafish${{ matrix.arch }}.exe windows/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pikafish-windows${{ matrix.arch }}
+          path: |
+            windows/pikafish${{ matrix.arch }}.exe
+            AUTHORS
+            Copying.txt
+            NNUE-License.txt
+            README.md
+            Top CPU Contributors.txt
+
+  linux:
+    strategy:
+      matrix:
+        arch: ["-bmi2", "-modern"]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          cd src
+          make clean
+          make -j build COMP=gcc ARCH=x86-64${{ matrix.arch }} \
+               EXE=pikafish${{ matrix.arch }}
+          strip pikafish${{ matrix.arch }}
+
+      - name: Package artifact files
+        run: |
+          mkdir linux
+          cp src/pikafish${{ matrix.arch }} linux/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pikafish-linux${{ matrix.arch }}
+          path: |
+            linux/pikafish${{ matrix.arch }}
+            AUTHORS
+            Copying.txt
+            NNUE-License.txt
+            README.md
+            Top CPU Contributors.txt
+          
+  Pikafish-MacOS:
+    name: MacOS-apple-silicon
+    runs-on: macos-latest
+    env:
+      ARCH: apple-silicon
+      COMPCXX: clang++
+      COMP: clang
+      EXE: pikafish-apple-silicon
+    defaults:
+      run:
+        working-directory: src
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile apple-silicon build
+        run: |
+          make -j profile-build EXE=$EXE
+          make strip EXE=$EXE
+          cp $EXE ../
+
+      - name: Download wiki
+        run: |
+          git clone https://github.com/official-pikafish/Pikafish.wiki.git ../Wiki
+          cd ../Wiki
+          rm -rf .git
+
+      # Artifacts automatically get zipped.
+      # To avoid double-zipping, we use the unzipped directory
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pikafish-MacOS-apple-silicon
+          path: |
+            ${{ env.EXE }}
+            Wiki
+            AUTHORS
+            CONTRIBUTING.md
+            Copying.txt
+            README.md
+            Top CPU Contributors.txt
+            linux/pikafish${{ matrix.arch }}
+            AUTHORS
+            Copying.txt
+            NNUE-License.txt
+            README.md
+            Top CPU Contributors.txt
+
+  Pikafish-Android:
+    name: Android-${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    env:
+      ARCH: ${{ matrix.arch }}
+      COMPCXX: aarch64-linux-android29-clang++
+      COMP: ndk
+      EXE: pikafish-${{ matrix.arch }}
+      LDFLAGS: "-static -Wno-unused-command-line-argument"
+    strategy:
+      matrix:
+        arch: ["armv8"]
+    defaults:
+      run:
+        working-directory: src
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download required linux packages
+        run: |
+          sudo apt update
+          sudo apt install qemu-user
+
+      - name: Install NDK
+        run: |
+          NDKV="27.2.12479018"
+          ANDROID_ROOT=/usr/local/lib/android
+          ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
+          SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+          echo "y" | $SDKMANAGER "ndk;$NDKV"
+          ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/$NDKV
+          ANDROID_NDK_BIN=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin
+          echo "ANDROID_NDK_BIN=$ANDROID_NDK_BIN" >> $GITHUB_ENV
+
+      - name: Compile ${{ matrix.arch }} build
+        run: |
+          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+          make -j profile-build EXE=$EXE WINE_PATH=$EMU
+          make strip EXE=$EXE
+          cp $EXE ../
+
+      - uses: actions/upload-artifact@v4
+        with:	
+          name: Pikafish-Android-${{ matrix.arch }}
+          path: |
+            ${{ env.EXE }}
+            AUTHORS
+            CONTRIBUTING.md
+            Copying.txt
+            README.md
+            Top CPU Contributors.txt

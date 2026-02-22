@@ -322,26 +322,41 @@ function Ensure-JieqiOldEngine {
     $engineSrcWindows = Join-Path $engineRootWindows 'src'
     $engineExeWindows = Join-Path $engineSrcWindows 'PikaJieQi'
     $engineNnueWindows = Join-Path $engineSrcWindows 'pikafish.nnue'
+        $vendoredEngineSrcWindows = Join-Path $ProjectRoot 'third_party\Pikafish-jieqi-old\src'
+        $vendoredEngineNnueWindows = Join-Path $vendoredEngineSrcWindows 'pikafish.nnue'
     $fallbackNnueWindows = Join-Path $ProjectRoot 'server\data\pikafish-master.nnue'
 
     $engineRootWsl = Convert-ToWslPath $engineRootWindows
     $engineSrcWsl = Convert-ToWslPath $engineSrcWindows
+        $vendoredEngineSrcWsl = Convert-ToWslPath $vendoredEngineSrcWindows
+        $engineRootWslBuild = '/tmp/flipchess/Pikafish-jieqi-old'
+        $engineSrcWslBuild = "$engineRootWslBuild/src"
 
     $syncCmd = @"
 set -euo pipefail
-if [ ! -d '$engineRootWsl/.git' ]; then
-  git clone -b '$EngineBranch' '$EngineRepoUrl' '$engineRootWsl'
+mkdir -p '$engineSrcWsl'
+if [ -f '$vendoredEngineSrcWsl/Makefile' ]; then
+    rm -rf '$engineRootWslBuild'
+    mkdir -p '$engineSrcWslBuild'
+    cp -a '$vendoredEngineSrcWsl/.' '$engineSrcWslBuild/'
+elif [ ! -d '$engineRootWslBuild/.git' ]; then
+    git clone -b '$EngineBranch' '$EngineRepoUrl' '$engineRootWslBuild'
 else
-  git -C '$engineRootWsl' fetch --all --tags
-  git -C '$engineRootWsl' checkout '$EngineBranch'
-  git -C '$engineRootWsl' pull --ff-only
+    git -C '$engineRootWslBuild' fetch --all --tags
+    git -C '$engineRootWslBuild' checkout '$EngineBranch'
+    git -C '$engineRootWslBuild' pull --ff-only
 fi
-cd '$engineSrcWsl'
+cd '$engineSrcWslBuild'
 make -j"`$(nproc)" profile-build
 if [ ! -x './PikaJieQi' ] && [ -x './pikafish' ]; then
   cp -f './pikafish' './PikaJieQi'
   chmod +x './PikaJieQi'
 fi
+cp -f './PikaJieQi' '$engineSrcWsl/PikaJieQi'
+if [ -f './pikafish.nnue' ]; then
+    cp -f './pikafish.nnue' '$engineSrcWsl/pikafish.nnue'
+fi
+chmod +x '$engineSrcWsl/PikaJieQi' || true
 "@
 
     $syncCmdUnix = ($syncCmd -replace "`r`n", "`n") -replace "`r", "`n"
@@ -359,7 +374,11 @@ fi
     }
 
     if (-not (Test-Path $engineNnueWindows)) {
-        if (Test-Path $fallbackNnueWindows) {
+        if (Test-Path $vendoredEngineNnueWindows) {
+            Write-Step 'copying NNUE from vendored third_party source...'
+            Copy-Item -Path $vendoredEngineNnueWindows -Destination $engineNnueWindows -Force
+        }
+        elseif (Test-Path $fallbackNnueWindows) {
             Write-Step 'copying NNUE from project server/data...'
             Copy-Item -Path $fallbackNnueWindows -Destination $engineNnueWindows -Force
         }
@@ -379,18 +398,18 @@ fi
                 $downloadScriptTemplate = @'
 set -euo pipefail
 tmp_nnue='__ENGINE_NNUE_WSL__'
-mkdir -p "\$(dirname "$tmp_nnue")"
+mkdir -p "$(dirname "$tmp_nnue")"
 urls=(
     'https://raw.githubusercontent.com/official-pikafish/Networks/master/pikafish.nnue'
     'https://raw.githubusercontent.com/official-pikafish/Pikafish/master/src/pikafish.nnue'
     'https://ghproxy.com/https://raw.githubusercontent.com/official-pikafish/Networks/master/pikafish.nnue'
     'https://ghproxy.com/https://raw.githubusercontent.com/official-pikafish/Pikafish/master/src/pikafish.nnue'
 )
-for url in "\${urls[@]}"; do
+for url in "${urls[@]}"; do
     if command -v curl >/dev/null 2>&1; then
         if curl -fsSL --connect-timeout 10 "$url" -o "$tmp_nnue"; then
-            size=\$(wc -c < "$tmp_nnue" || echo 0)
-            if [ "\${size:-0}" -ge 1048576 ]; then
+            size=$(wc -c < "$tmp_nnue" || echo 0)
+            if [ "${size:-0}" -ge 1048576 ]; then
                 exit 0
             fi
         fi

@@ -64,6 +64,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\windows-only\scripts\start
 - 后端健康检查：`http://127.0.0.1:3101/api/health`
 - 前端地址：`http://127.0.0.1:2222`
 
+## 内置引擎源码与模型（无需每次从 GitHub 拉取）
+
+- 仓库已内置 `third_party/Pikafish-jieqi-old/src`（`jieqi_old` 源码）。
+- 仓库已内置 `third_party/Pikafish-jieqi-old/src/pikafish.nnue`（NNUE 模型）。
+- `install-local-deps.ps1` 会优先使用内置源码在 WSL 中编译，并将产物同步到 `../Pikafish-jieqi-old/src/PikaJieQi`。
+- 若本地引擎目录缺少模型，会优先从 `third_party` 复制，避免重复联网下载。
+
 ## 国内网络适配说明
 
 - `install-local-deps.ps1` 在 `zh-CN` 系统会自动启用国内镜像模式：
