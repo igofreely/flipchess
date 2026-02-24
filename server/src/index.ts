@@ -2,6 +2,8 @@ import cors from 'cors'
 import express from 'express'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'node:crypto'
+import { existsSync, statSync } from 'node:fs'
+import { dirname, resolve as resolvePath } from 'node:path'
 import { createInitialGame, getPieceLabel, playMove } from '../../src/game/engine'
 import { chooseBestAiMoveTimed } from '../../src/game/ai'
 import type { Position, Side } from '../../src/game/types'
@@ -22,10 +24,62 @@ const MIN_AI_MOVE_INTERVAL_MS = 1000
 const PIKAFISH_SEARCH_DEPTH = 64
 const PIKAFISH_NO_LIMIT_BUDGET_MS = 12_000
 const PIKAFISH_MAX_THINK_MS = Number(process.env.PIKAFISH_MAX_THINK_MS ?? 20_000)
-const PIKAFISH_JIEQI_PATH = String(process.env.PIKAFISH_JIEQI_PATH ?? '').trim()
-const PIKAFISH_EVALFILE_PATH = String(process.env.PIKAFISH_EVALFILE_PATH ?? '').trim()
+const PIKAFISH_JIEQI_PATH_ENV = String(process.env.PIKAFISH_JIEQI_PATH ?? '').trim()
+const PIKAFISH_EVALFILE_PATH_ENV = String(process.env.PIKAFISH_EVALFILE_PATH ?? '').trim()
 const PIKAFISH_THREADS = Number(process.env.PIKAFISH_THREADS ?? 1)
 const PIKAFISH_HASH_MB = Number(process.env.PIKAFISH_HASH_MB ?? 64)
+
+const isExecutableFile = (filePath: string) => {
+  if (!filePath) return false
+  try {
+    const st = statSync(filePath)
+    if (!st.isFile()) return false
+    return (st.mode & 0o111) !== 0
+  } catch {
+    return false
+  }
+}
+
+const detectPikafishExecutable = () => {
+  if (PIKAFISH_JIEQI_PATH_ENV) return PIKAFISH_JIEQI_PATH_ENV
+  const root = process.cwd()
+
+  const candidates = [
+    resolvePath(root, 'third_party/Pikafish-jieqi-old/src/PikaJieQi'),
+    resolvePath(root, '../Pikafish-jieqi-old/src/PikaJieQi'),
+    resolvePath(root, '../Pikafish-jieqi/src/pikafish'),
+  ]
+
+  for (const candidate of candidates) {
+    if (isExecutableFile(candidate)) {
+      console.log(`[server] auto detected PIKAFISH_JIEQI_PATH=${candidate}`)
+      return candidate
+    }
+  }
+
+  return ''
+}
+
+const detectPikafishEvalFile = (enginePath: string) => {
+  if (PIKAFISH_EVALFILE_PATH_ENV) return PIKAFISH_EVALFILE_PATH_ENV
+  const root = process.cwd()
+
+  const candidates = [
+    resolvePath(root, 'server/data/pikafish-master.nnue'),
+    enginePath ? resolvePath(dirname(enginePath), 'pikafish.nnue') : '',
+  ].filter(Boolean)
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      console.log(`[server] auto detected PIKAFISH_EVALFILE_PATH=${candidate}`)
+      return candidate
+    }
+  }
+  return ''
+}
+
+const PIKAFISH_JIEQI_PATH = detectPikafishExecutable()
+const PIKAFISH_EVALFILE_PATH = detectPikafishEvalFile(PIKAFISH_JIEQI_PATH)
 
 const aiTurnTimers = new Map<string, ReturnType<typeof setTimeout>>()
 

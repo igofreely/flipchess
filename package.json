@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "bash scripts/dev-local.sh",
+    "local:up": "bash scripts/local-up.sh",
+    "pikafish:build": "bash scripts/pikafish-build.sh",
     "server:dev": "tsx watch server/src/index.ts",
     "server:start": "tsx server/src/index.ts",
     "server:start:mysql": "bash scripts/server-start-mysql.sh",

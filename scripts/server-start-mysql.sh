@@ -26,6 +26,7 @@ export MYSQL_DATABASE="${MYSQL_DATABASE:-flipchess}"
 
 detect_pikafish_path() {
 	local candidates=(
+		"${ROOT_DIR}/third_party/Pikafish-jieqi-old/src/PikaJieQi"
 		"${ROOT_DIR}/../Pikafish-jieqi-old/src/PikaJieQi"
 		"${ROOT_DIR}/../Pikafish-jieqi/src/pikafish"
 	)
@@ -89,10 +90,15 @@ if [[ -n "${PIKAFISH_JIEQI_PATH:-}" ]]; then
 fi
 
 if [[ -n "${PIKAFISH_JIEQI_PATH:-}" && -z "${PIKAFISH_EVALFILE_PATH:-}" ]]; then
+	if [[ -f "${ROOT_DIR}/server/data/pikafish-master.nnue" ]]; then
+		export PIKAFISH_EVALFILE_PATH="${ROOT_DIR}/server/data/pikafish-master.nnue"
+		echo "[server-start] auto detected PIKAFISH_EVALFILE_PATH=${PIKAFISH_EVALFILE_PATH}"
+	else
 	default_evalfile="$(dirname "${PIKAFISH_JIEQI_PATH}")/pikafish.nnue"
 	if [[ -f "${default_evalfile}" ]]; then
 		export PIKAFISH_EVALFILE_PATH="${default_evalfile}"
 		echo "[server-start] auto detected PIKAFISH_EVALFILE_PATH=${PIKAFISH_EVALFILE_PATH}"
+	fi
 	fi
 fi
 

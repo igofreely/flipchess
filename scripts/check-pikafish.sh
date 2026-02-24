@@ -4,9 +4,18 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-DEFAULT_ENGINE_PATH="$(cd "$ROOT_DIR/.." && pwd)/Pikafish-jieqi-old/src/PikaJieQi"
+DEFAULT_ENGINE_PATH="$ROOT_DIR/third_party/Pikafish-jieqi-old/src/PikaJieQi"
+FALLBACK_ENGINE_PATH="$(cd "$ROOT_DIR/.." && pwd)/Pikafish-jieqi-old/src/PikaJieQi"
 ENGINE_PATH="${PIKAFISH_JIEQI_PATH:-$DEFAULT_ENGINE_PATH}"
+if [[ ! -x "$ENGINE_PATH" && -x "$FALLBACK_ENGINE_PATH" ]]; then
+  ENGINE_PATH="$FALLBACK_ENGINE_PATH"
+fi
+
+DEFAULT_EVALFILE_PATH="$ROOT_DIR/server/data/pikafish-master.nnue"
 EVALFILE_PATH="${PIKAFISH_EVALFILE_PATH:-}"
+if [[ -z "$EVALFILE_PATH" && -f "$DEFAULT_EVALFILE_PATH" ]]; then
+  EVALFILE_PATH="$DEFAULT_EVALFILE_PATH"
+fi
 CHECK_PORT="${CHECK_PORT:-3101}"
 BASE_URL="http://127.0.0.1:${CHECK_PORT}/api"
 SERVER_LOG="/tmp/flipchess-pikafish-check.log"

@@ -19,6 +19,17 @@
 
 ## 本地部署（完整命令）
 
+### 一键安装并启动（新电脑推荐）
+
+macOS + Homebrew 环境下，拉取代码后直接运行：
+
+```bash
+cd /path/to/FlipChess
+npm run local:up
+```
+
+脚本会自动：安装/检查 Node + MySQL（brew）、安装 npm 依赖、（尽力）编译 Pikafish，然后启动 mysql + 后端 + 前端。
+
 ### 1) 拉取后安装依赖
 
 ```bash
