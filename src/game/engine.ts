@@ -300,10 +300,9 @@ const advisorMoves = (board: (string | null)[][], pieces: Record<string, Piece>,
   ]
 
   for (const d of dirs) {
-    addIfValid(out, board, pieces, source, {
-      row: source.currentPos.row + d.dr,
-      col: source.currentPos.col + d.dc,
-    })
+    const to = { row: source.currentPos.row + d.dr, col: source.currentPos.col + d.dc }
+    if (!source.isRevealed && !palaceContains(source.side, to)) continue
+    addIfValid(out, board, pieces, source, to)
   }
 
   return out
