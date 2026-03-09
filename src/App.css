@@ -599,7 +599,8 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: clamp(13px, 4vw, 18px);
+  font-size: clamp(16px, 4.8vw, 22px);
+  line-height: 1;
   box-sizing: border-box;
   transition: transform 0.2s ease;
 }
@@ -612,13 +613,15 @@
 .piece.red {
   color: #b42318;
   border: 2px solid #b42318;
-  background: #fff8ef;
+  background: linear-gradient(180deg, #fff7ea 0%, #f3dfc7 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .piece.black {
-  color: #1f2937;
-  border: 2px solid #1f2937;
-  background: #fff8ef;
+  color: #f8fafc;
+  border: 2px solid #0f172a;
+  background: linear-gradient(180deg, #475569 0%, #0f172a 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .piece.hidden {
